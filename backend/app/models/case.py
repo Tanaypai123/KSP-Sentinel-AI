@@ -24,6 +24,14 @@ class CaseMaster(Base):
     case_status_id: Mapped[Optional[int]] = mapped_column("CaseStatusID", Integer, ForeignKey("case_status_master.CaseStatusID", ondelete="SET NULL"), nullable=True)
     court_id: Mapped[Optional[int]] = mapped_column("CourtID", Integer, ForeignKey("court.CourtID", ondelete="SET NULL"), nullable=True)
 
+    # Occurrence & Location Columns (Direct in CaseMaster in ER diagram)
+    incident_from_date: Mapped[Optional[datetime]] = mapped_column("IncidentFromDate", DateTime, nullable=True)
+    incident_to_date: Mapped[Optional[datetime]] = mapped_column("IncidentToDate", DateTime, nullable=True)
+    info_received_ps_date: Mapped[Optional[datetime]] = mapped_column("InfoReceivedPSDate", DateTime, nullable=True)
+    latitude: Mapped[Optional[float]] = mapped_column("latitude", Numeric(10, 8), nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column("longitude", Numeric(11, 8), nullable=True)
+    brief_facts: Mapped[Optional[str]] = mapped_column("BriefFacts", String, nullable=True)
+
     # Relationships
     police_person: Mapped[Optional["Employee"]] = relationship("Employee", foreign_keys=[police_person_id])
     police_station: Mapped[Optional["Unit"]] = relationship("Unit")
@@ -41,24 +49,6 @@ class CaseMaster(Base):
     arrests: Mapped[List["ArrestSurrender"]] = relationship(back_populates="case_master")
     chargesheets: Mapped[List["ChargesheetDetails"]] = relationship(back_populates="case_master")
     act_sections: Mapped[List["ActSectionAssociation"]] = relationship(back_populates="case_master")
-
-    # One-to-One
-    occurrence_time: Mapped[Optional["Inv_OccuranceTime"]] = relationship(back_populates="case_master", uselist=False)
-
-
-class Inv_OccuranceTime(Base):
-    __tablename__ = "inv_occurance_time"
-
-    case_master_id: Mapped[int] = mapped_column("CaseMasterID", Integer, ForeignKey("case_master.CaseMasterID", ondelete="CASCADE"), primary_key=True)
-    incident_from_date: Mapped[Optional[datetime]] = mapped_column("IncidentFromDate", DateTime, nullable=True)
-    incident_to_date: Mapped[Optional[datetime]] = mapped_column("IncidentToDate", DateTime, nullable=True)
-    info_received_ps_date: Mapped[Optional[datetime]] = mapped_column("InfoReceivedPSDate", DateTime, nullable=True)
-    latitude: Mapped[Optional[float]] = mapped_column("latitude", Numeric(10, 8), nullable=True)
-    longitude: Mapped[Optional[float]] = mapped_column("longitude", Numeric(11, 8), nullable=True)
-    brief_facts: Mapped[Optional[str]] = mapped_column("BriefFacts", String, nullable=True)
-
-    # Relationships
-    case_master: Mapped["CaseMaster"] = relationship(back_populates="occurrence_time")
 
 
 class ComplainantDetails(Base):

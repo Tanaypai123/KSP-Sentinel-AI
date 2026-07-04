@@ -24,7 +24,6 @@ from app.models.crime import (
 )
 from app.models.case import (
     CaseMaster,
-    Inv_OccuranceTime,
     ComplainantDetails,
     ActSectionAssociation,
     Victim,
@@ -56,7 +55,6 @@ __all__ = [
     "Section",
     "CrimeHeadActSection",
     "CaseMaster",
-    "Inv_OccuranceTime",
     "ComplainantDetails",
     "ActSectionAssociation",
     "Victim",
