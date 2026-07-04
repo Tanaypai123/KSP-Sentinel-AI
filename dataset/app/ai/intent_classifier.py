@@ -3,10 +3,6 @@
 This module implements a lightweight rule‑based classifier that maps a user
 utterance to one of the supported intents. Regular expressions are used to
 match keywords associated with each intent – no LLM required.
-
-Public API:
-- :class:`Intent` – enum of supported intents.
-- :func:`classify_intent` – returns the matching ``Intent`` or ``None``.
 """
 
 from __future__ import annotations
@@ -25,14 +21,45 @@ class Intent(str, Enum):
     HOTSPOT = "HOTSPOT"
     REPORTS = "REPORTS"
 
-# Mapping intent -> list of regex patterns (case‑insensitive)
+# Mapping intent → list of regex patterns (case‑insensitive)
 _PATTERN_MAP: Dict[Intent, List[str]] = {
-    Intent.SEARCH_CASES: [r"\\bcase\\b", r"\\bfir\\b", r"\\bsearch\\b", r"\\breport\\b"],
-    Intent.SEARCH_ACCUSED: [r"\\baccused\\b", r"\\bsuspect\\b", r"\\bcriminal\\b"],
-    Intent.SEARCH_VICTIMS: [r"\\bvictim\\b", r"\\binjured\\b"],
-    Intent.CRIME_TREND: [r"\\btrend\\b", r"\\bstatistics?\\b", r"\\bcrime.*rate\\b"],
-    Intent.HOTSPOT: [r"\\bhotspot\\b", r"\\bheat map\\b", r"\\barea.*high.*crime\\b"],
-    Intent.REPORTS: [r"\\breport\\b", r"\\bdashboard\\b"],
+    Intent.SEARCH_CASES: [
+        r"\\bcase\\b",
+        r"\\bfir\\b",
+        r"\\bsearch\\b",
+        r"\\breport\\b",
+        r"show\\s+fir",
+        r"show\\s+cases",
+    ],
+    Intent.SEARCH_ACCUSED: [
+        r"\\baccused\\b",
+        r"\\bsuspect\\b",
+        r"\\bcriminal\\b",
+        r"named\\s+\\w+",
+    ],
+    Intent.SEARCH_VICTIMS: [
+        r"\\bvictim\\b",
+        r"\\binjured\\b",
+        r"victims?\\s+under\\s+\\d+",
+        r"victim\\s+aged?\\s+\\d+",
+    ],
+    Intent.CRIME_TREND: [
+        r"\\btrend\\b",
+        r"\\bstatistics?\\b",
+        r"\\bcrime.*rate\\b",
+        r"top\\s+crimes",
+    ],
+    Intent.HOTSPOT: [
+        r"\\bhotspot\\b",
+        r"\\bheat\\s+map\\b",
+        r"\\barea.*high.*crime\\b",
+        r"crime\\s+hotspots?",
+    ],
+    Intent.REPORTS: [
+        r"\\breport\\b",
+        r"\\bdashboard\\b",
+        r"statistics\\s+dashboard",
+    ],
 }
 
 # Pre‑compile patterns for performance

@@ -1,29 +1,26 @@
-from typing import List, Any
-from sqlalchemy.orm import Session
+from typing import List, Dict, Any
+
 from sqlalchemy import Select
+from sqlalchemy.orm import Session
 
 
-def execute_query(db: Session, select_stmt: Select) -> List[dict]:
-    """Execute a SQLAlchemy ``Select`` statement using the provided session.
+def orm_to_dict(obj):
+    return {
+        attr.key: getattr(obj, attr.key)
+        for attr in obj.__mapper__.column_attrs
+    }
 
-    Parameters
-    ----------
-    db: Session
-        The SQLAlchemy session/connection to use for execution.
-    select_stmt: Select
-        A ``Select`` object produced by the ``sql_generator`` module.
 
-    Returns
-    -------
-    List[dict]
-        A list of rows converted to plain dictionaries. If an error occurs,
-        an empty list is returned.
-    """
-    try:
-        result = db.execute(select_stmt)
-        rows = result.fetchall()
-        # ``Row`` objects expose a ``_mapping`` attribute for dict conversion
-        return [dict(row._mapping) for row in rows]
-    except Exception:
-        # Gracefully handle any execution errors – return empty list
-        return []
+def execute_query(db: Session, select_stmt: Select) -> List[Dict[str, Any]]:
+    result = db.execute(select_stmt)
+    rows = result.fetchall()
+
+    output = []
+
+    for row in rows:
+        if len(row) == 1 and hasattr(row[0], "__table__"):
+            output.append(orm_to_dict(row[0]))
+        else:
+            output.append(dict(row._mapping))
+
+    return output
