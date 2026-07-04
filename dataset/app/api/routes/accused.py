@@ -1,7 +1,10 @@
-from typing import List, Dict, Any
-from fastapi import APIRouter, Depends
+from typing import Dict, Any, List
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from app.database.connection import get_db
+from app.models.case import Accused
 
 router = APIRouter()
 
@@ -9,40 +12,89 @@ router = APIRouter()
 @router.get("", response_model=List[Dict[str, Any]])
 def read_accused_list(db: Session = Depends(get_db)):
     """
-    Get all accused profiles from biometrics tracking.
-    [STUB - Database logic pending]
+    Get all accused records.
     """
+
+    accused_list = db.query(Accused).all()
+
     return [
         {
-            "id": "acc-1",
-            "name": "Rajesh \"Gowda\" Gowda",
-            "age": 34,
-            "status": "At Large",
-            "risk_score": 92,
-            "biometrics_match": 87.5
+            "id": accused.accused_master_id,
+            "case_master_id": accused.case_master_id,
+            "name": accused.accused_name,
+            "age": accused.age_year,
+            "gender_id": accused.gender_id,
+            "person_id": accused.person_id,
         }
+        for accused in accused_list
     ]
 
 
 @router.get("/{accused_id}", response_model=Dict[str, Any])
-def read_accused(accused_id: str, db: Session = Depends(get_db)):
+def read_accused(accused_id: int, db: Session = Depends(get_db)):
     """
-    Get detailed biometric dossier for a specific suspect.
-    [STUB - Database logic pending]
+    Get a single accused record.
     """
+
+    accused = (
+        db.query(Accused)
+        .filter(Accused.accused_master_id == accused_id)
+        .first()
+    )
+
+    if accused is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Accused not found"
+        )
+
     return {
-        "id": accused_id,
-        "name": "Rajesh \"Gowda\" Gowda",
-        "age": 34,
-        "status": "At Large",
-        "notes": "Operates dark web syndicate 'Gowda_Net'."
+        "id": accused.accused_master_id,
+        "case_master_id": accused.case_master_id,
+        "name": accused.accused_name,
+        "age": accused.age_year,
+        "gender_id": accused.gender_id,
+        "person_id": accused.person_id,
     }
 
 
 @router.put("/{accused_id}", response_model=Dict[str, Any])
-def update_accused(accused_id: str, payload: Dict[str, Any], db: Session = Depends(get_db)):
+def update_accused(
+    accused_id: int,
+    payload: Dict[str, Any],
+    db: Session = Depends(get_db),
+):
     """
-    Update details/biometrics for a suspect.
-    [STUB - Database logic pending]
+    Update an accused record.
     """
-    return {"id": accused_id, "status": "updated", "data": payload}
+
+    accused = (
+        db.query(Accused)
+        .filter(Accused.accused_master_id == accused_id)
+        .first()
+    )
+
+    if accused is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Accused not found"
+        )
+
+    allowed_fields = [
+        "accused_name",
+        "age_year",
+        "gender_id",
+        "person_id",
+    ]
+
+    for field in allowed_fields:
+        if field in payload:
+            setattr(accused, field, payload[field])
+
+    db.commit()
+    db.refresh(accused)
+
+    return {
+        "message": "Accused updated successfully",
+        "id": accused.accused_master_id,
+    }

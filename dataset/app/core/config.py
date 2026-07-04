@@ -31,9 +31,9 @@ class Settings(BaseSettings):
 
     # Database Configuration
     POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres"
-    POSTGRES_DB: str = "ksp_sentinel"
+    POSTGRES_USER: str = "tanaysharma"
+    POSTGRES_PASSWORD: str = ""
+    POSTGRES_DB: str = "postgres"
     POSTGRES_PORT: int = 5432
     
     # Custom/Override DATABASE_URL (if provided, it takes precedence)

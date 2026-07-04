@@ -21,6 +21,12 @@ if config.config_file_name is not None:
 # Import the Base from our connection module
 from app.database.connection import Base
 
+# Import all ORM models so they register with Base.metadata
+import app.models.case
+import app.models.crime
+import app.models.masters
+
+
 target_metadata = Base.metadata
 
 def get_url() -> str:
