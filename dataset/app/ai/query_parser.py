@@ -24,42 +24,13 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from typing import Any, Dict, Optional
+from app.ai.entity_config import ENTITY_CONFIG
 
 # ---------------------------------------------------------------------------
 # Configurable regex patterns for each entity.  Patterns capture a single
 # group – the value to be stored.  All patterns are case‑insensitive.
 # ---------------------------------------------------------------------------
-ENTITY_PATTERNS: Dict[str, str] = {
-    # Unique FIR identifier – e.g. "KSP-00123"
-    "fir_number": r"\b(ksp-\d{4,})\b",
-    # Crime taxonomy – simple word after the label
-    "crime_head": r"crime head\s*[:\-]?\s*(\w+)",
-    "crime_sub_head": r"crime sub[ -]?head\s*[:\-]?\s*(\w+)",
-    # Location
-    "district": r"(?:in|from)\s+([a-z]+(?:\s+[a-z]+)*)\s+district",
-    "police_station": r"(?:in|from)\s+([a-z]+(?:\s+[a-z]+)*)\s+police station",
-    # Persons
-    "accused_name": r"accused\s*(?:named)?\s*([a-z]+(?:\s+[a-z]+)*)",
-    "victim_name": r"victim\s*(?:named)?\s*([a-z]+(?:\s+[a-z]+)*)",
-    "complainant_name": r"complainant\s*(?:named)?\s*([a-z]+(?:\s+[a-z]+)*)",
-    # Legal references
-    "section": r"section\s*[:\-]?\s*(\w+)",
-    "act": r"act\s*[:\-]?\s*([a-z]+)",
-    # Date handling – "after June 2022" or "before March 2021"
-    "date_range_after": r"after\s+(\w+)\s+(\d{4})",
-    "date_range_before": r"before\s+(\w+)\s+(\d{4})",
-    # Simple year mention – e.g. "2022"
-    "year": r"\b(20\d{2})\b",
-    # Demographics
-    "gender": r"\b(male|female)\b",
-    "age_under": r"under\s+(\d+)",
-    "age_exact": r"(?:age|aged)\s+(\d+)",
-    # Status keyword
-    "status": r"status\s*[:\-]?\s*(\w+)",
-    # Geolocation – numeric latitude/longitude
-    "latitude": r"latitude\s*[:\-]?\s*([-+]?\d*\.?\d+)",
-    "longitude": r"longitude\s*[:\-]?\s*([-+]?\d*\.?\d+)",
-}
+# Entity patterns moved to entity_config.py
 
 
 def _apply_pattern(pattern: str, text: str) -> Optional[str]:
@@ -79,8 +50,8 @@ def _parse_date_range(text: str) -> Optional[Dict[str, str]]:
     for a "before" clause.  The ISO‑formatted date string is used to keep the
     downstream SQL generator simple.
     """
-    after_match = re.search(ENTITY_PATTERNS["date_range_after"], text, re.IGNORECASE)
-    before_match = re.search(ENTITY_PATTERNS["date_range_before"], text, re.IGNORECASE)
+    after_match = re.search(ENTITY_CONFIG["date_range_after"]["pattern"], text, re.IGNORECASE)
+    before_match = re.search(ENTITY_CONFIG["date_range_before"]["pattern"], text, re.IGNORECASE)
     if after_match:
         try:
             dt = datetime.strptime(f"{after_match.group(1)} {after_match.group(2)}", "%B %Y")
@@ -101,8 +72,8 @@ def _parse_age(text: str) -> Optional[Dict[str, int]]:
 
     ``{"lt": 18}`` for "under 18" or ``{"eq": 30}`` for "age 30".
     """
-    under = re.search(ENTITY_PATTERNS["age_under"], text, re.IGNORECASE)
-    exact = re.search(ENTITY_PATTERNS["age_exact"], text, re.IGNORECASE)
+    under = re.search(ENTITY_CONFIG["age_under"]["pattern"], text, re.IGNORECASE)
+    exact = re.search(ENTITY_CONFIG["age_exact"]["pattern"], text, re.IGNORECASE)
     if under:
         return {"lt": int(under.group(1))}
     if exact:
@@ -125,23 +96,23 @@ def parse_query(query: str) -> Dict[str, Any]:
     # Entity extraction using the configurable patterns.
     # ---------------------------------------------------------------------
     entities: Dict[str, Any] = {
-        "fir_number": _apply_pattern(ENTITY_PATTERNS["fir_number"], lowered),
-        "crime_head": _apply_pattern(ENTITY_PATTERNS["crime_head"], lowered),
-        "crime_sub_head": _apply_pattern(ENTITY_PATTERNS["crime_sub_head"], lowered),
-        "district": _apply_pattern(ENTITY_PATTERNS["district"], lowered),
-        "police_station": _apply_pattern(ENTITY_PATTERNS["police_station"], lowered),
-        "accused_name": _apply_pattern(ENTITY_PATTERNS["accused_name"], lowered),
-        "victim_name": _apply_pattern(ENTITY_PATTERNS["victim_name"], lowered),
-        "complainant_name": _apply_pattern(ENTITY_PATTERNS["complainant_name"], lowered),
-        "section": _apply_pattern(ENTITY_PATTERNS["section"], lowered),
-        "act": _apply_pattern(ENTITY_PATTERNS["act"], lowered),
+        "fir_number": _apply_pattern(ENTITY_CONFIG["fir_number"]["pattern"], lowered),
+        "crime_head": _apply_pattern(ENTITY_CONFIG["crime_head"]["pattern"], lowered),
+        "crime_sub_head": _apply_pattern(ENTITY_CONFIG["crime_sub_head"]["pattern"], lowered),
+        "district": _apply_pattern(ENTITY_CONFIG["district"]["pattern"], lowered),
+        "police_station": _apply_pattern(ENTITY_CONFIG["police_station"]["pattern"], lowered),
+        "accused_name": _apply_pattern(ENTITY_CONFIG["accused_name"]["pattern"], lowered),
+        "victim_name": _apply_pattern(ENTITY_CONFIG["victim_name"]["pattern"], lowered),
+        "complainant_name": _apply_pattern(ENTITY_CONFIG["complainant_name"]["pattern"], lowered),
+        "section": _apply_pattern(ENTITY_CONFIG["section"]["pattern"], lowered),
+        "act": _apply_pattern(ENTITY_CONFIG["act"]["pattern"], lowered),
         "date_range": _parse_date_range(lowered),
-        "year": _apply_pattern(ENTITY_PATTERNS["year"], lowered),
-        "gender": _apply_pattern(ENTITY_PATTERNS["gender"], lowered),
+        "year": _apply_pattern(ENTITY_CONFIG["year"]["pattern"], lowered),
+        "gender": _apply_pattern(ENTITY_CONFIG["gender"]["pattern"], lowered),
         "age": _parse_age(lowered),
-        "status": _apply_pattern(ENTITY_PATTERNS["status"], lowered),
-        "latitude": _apply_pattern(ENTITY_PATTERNS["latitude"], lowered),
-        "longitude": _apply_pattern(ENTITY_PATTERNS["longitude"], lowered),
+        "status": _apply_pattern(ENTITY_CONFIG["status"]["pattern"], lowered),
+        "latitude": _apply_pattern(ENTITY_CONFIG["latitude"]["pattern"], lowered),
+        "longitude": _apply_pattern(ENTITY_CONFIG["longitude"]["pattern"], lowered),
     }
 
     # Normalise numeric fields where appropriate
