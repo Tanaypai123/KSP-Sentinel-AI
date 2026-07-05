@@ -8,9 +8,8 @@ from typing import Dict
 
 ENTITY_CONFIG: Dict[str, Dict[str, str]] = {
     "fir_number": {"pattern": r"\b(ksp-\d{4,})\b", "type": "simple"},
-    "crime_head": {"pattern": r"crime head\s*[:\-]?\s*(\w+)", "type": "simple"},
-    "crime_sub_head": {"pattern": r"crime sub[ -]?head\s*[:\-]?\s*(\w+)", "type": "simple"},
-    "district": {"pattern": r"(?:in|from)\s+([a-z]+(?:\s+[a-z]+)*)\s+district", "type": "simple"},
+    "crime_head": {"pattern": r"(?:crime head\s*[:\-]?\s*)?(\w+)\s+cases?", "type": "simple"},
+    "district": {"pattern": r"(?:in|from)\s+([a-z]+(?:\s+[a-z]+)*)\s*(?:district)?", "type": "simple"},
     "police_station": {"pattern": r"(?:in|from)\s+([a-z]+(?:\s+[a-z]+)*)\s+police station", "type": "simple"},
     "accused_name": {"pattern": r"accused\s*(?:named)?\s*([a-z]+(?:\s+[a-z]+)*)", "type": "simple"},
     "victim_name": {"pattern": r"victim\s*(?:named)?\s*([a-z]+(?:\s+[a-z]+)*)", "type": "simple"},

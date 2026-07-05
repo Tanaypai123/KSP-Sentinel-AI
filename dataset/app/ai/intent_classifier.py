@@ -20,6 +20,7 @@ class Intent(str, Enum):
     CRIME_TREND = "CRIME_TREND"
     HOTSPOT = "HOTSPOT"
     REPORTS = "REPORTS"
+    AGGREGATE_COUNT = "AGGREGATE_COUNT"
 
 # Mapping intent → list of regex patterns (case‑insensitive)
 _PATTERN_MAP: Dict[Intent, List[str]] = {
@@ -70,6 +71,22 @@ _PATTERN_MAP: Dict[Intent, List[str]] = {
     r"crime\s+hotspots?",
     r"show\s+hotspots?",
     r"list\s+hotspots?",
+    ],
+    Intent.AGGREGATE_COUNT: [
+        r"\bhow many\b",
+        r"\btotal\b",
+        r"\bcount\b",
+        r"\bnumbers? of\b",
+        r"\bnumber of\b",
+        r"\bnumber\b",
+        r"\bnum\b",
+        r"\baggregate\b",
+        r"\bstats?\b",
+        # Include entity words so classifier sees intent
+        r"\bcases?\b",
+        r"\bfirs?\b",
+        r"\bvictims?\b",
+        r"\baccused\b",
     ],
     Intent.REPORTS: [
         r"\breport\b",

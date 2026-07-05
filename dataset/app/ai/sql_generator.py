@@ -252,16 +252,23 @@ def _apply_sort_and_pagination(stmt, entities: Dict[str, Any], intent: str):
     * ``sort_order`` – ``asc`` or ``desc`` (default ``desc``).
     * ``limit`` – maximum number of rows.
     * ``offset`` – number of rows to skip.
+
+    For intents that provide their own ordering (HOTSPOT, CRIME_TREND, REPORTS),
+    generic sorting is omitted.
     """
     sort_by = entities.get("sort_by")
     sort_order = _normalize_sort_order(entities.get("sort_order"))
-    if sort_by:
-        column = _resolve_sort_column(intent, sort_by)
-        if column is not None:
-            stmt = stmt.order_by(column.asc() if sort_order == "asc" else column.desc())
-    else:
-        if intent in {"SEARCH_CASES", "SEARCH_ACCUSED", "SEARCH_VICTIMS"}:
-            stmt = stmt.order_by(CaseMaster.crime_registered_date.desc())
+    # Intents with custom ordering that should skip generic sort logic
+    skip_generic_intents = {"HOTSPOT", "CRIME_TREND", "REPORTS"}
+    if intent not in skip_generic_intents:
+        if sort_by:
+            column = _resolve_sort_column(intent, sort_by)
+            if column is not None:
+                stmt = stmt.order_by(column.asc() if sort_order == "asc" else column.desc())
+        else:
+            if intent in {"SEARCH_CASES", "SEARCH_ACCUSED", "SEARCH_VICTIMS"}:
+                stmt = stmt.order_by(CaseMaster.crime_registered_date.desc())
+    # Pagination handling
     limit = entities.get("limit")
     offset = entities.get("offset")
     if limit:
@@ -357,13 +364,32 @@ def generate_select(parsed_query: Dict[str, Any]):
         stmt = _apply_sort_and_pagination(stmt, entities, intent)
         return stmt
 
-    if intent == "REPORTS":
-        stmt = select(
-            func.count(CaseMaster.case_master_id).label("total_cases"),
-            func.count(Accused.accused_master_id).label("total_accused"),
-            func.count(Victim.victim_master_id).label("total_victims"),
-        )
+    if intent == "AGGREGATE_COUNT":
+        # Accused count when accused-specific filter is present
+        if entities.get("accused_name"):
+            stmt = select(func.count(Accused.accused_master_id))
+            stmt = stmt.where(Accused.accused_name.ilike(entities["accused_name"]))
+            # Apply any case-level filters via join
+            case_entities = {k: v for k, v in entities.items() if k not in {"accused_name", "victim_name", "complainant_name"}}
+            if any(case_entities.values()):
+                stmt = stmt.join(Accused.case_master)
+                stmt = _apply_entity_filters(stmt, case_entities)
+            return stmt
+        # Victim count when victim-related filters are present
+        if entities.get("victim_name") or entities.get("gender") or entities.get("age"):
+            stmt = select(func.count(Victim.victim_master_id))
+            if entities.get("victim_name"):
+                stmt = stmt.where(Victim.victim_name.ilike(f"%{entities['victim_name']}%"))
+            if entities.get("gender"):
+                stmt = stmt.where(Victim.gender_id == entities["gender"])
+            if entities.get("age"):
+                stmt = _filter_age(stmt, entities["age"])
+            case_entities = {k: v for k, v in entities.items() if k not in {"victim_name", "gender", "age", "accused_name", "complainant_name"}}
+            if any(case_entities.values()):
+                stmt = stmt.join(Victim.case_master)
+                stmt = _apply_entity_filters(stmt, case_entities)
+            return stmt
+        # Default case count (no specific entity filters)
+        stmt = select(func.count(CaseMaster.case_master_id))
+        stmt = _apply_entity_filters(stmt, entities)
         return stmt
-
-    # Fallback – empty select.
-    return select()

@@ -95,38 +95,39 @@ def parse_query(query: str) -> Dict[str, Any]:
     # ---------------------------------------------------------------------
     # Entity extraction using the configurable patterns.
     # ---------------------------------------------------------------------
-    entities: Dict[str, Any] = {
-        "fir_number": _apply_pattern(ENTITY_CONFIG["fir_number"]["pattern"], lowered),
-        "crime_head": _apply_pattern(ENTITY_CONFIG["crime_head"]["pattern"], lowered),
-        "crime_sub_head": _apply_pattern(ENTITY_CONFIG["crime_sub_head"]["pattern"], lowered),
-        "district": _apply_pattern(ENTITY_CONFIG["district"]["pattern"], lowered),
-        "police_station": _apply_pattern(ENTITY_CONFIG["police_station"]["pattern"], lowered),
-        "accused_name": _apply_pattern(ENTITY_CONFIG["accused_name"]["pattern"], lowered),
-        "victim_name": _apply_pattern(ENTITY_CONFIG["victim_name"]["pattern"], lowered),
-        "complainant_name": _apply_pattern(ENTITY_CONFIG["complainant_name"]["pattern"], lowered),
-        "section": _apply_pattern(ENTITY_CONFIG["section"]["pattern"], lowered),
-        "act": _apply_pattern(ENTITY_CONFIG["act"]["pattern"], lowered),
-        "date_range": _parse_date_range(lowered),
-        "year": _apply_pattern(ENTITY_CONFIG["year"]["pattern"], lowered),
-        "gender": _apply_pattern(ENTITY_CONFIG["gender"]["pattern"], lowered),
-        "age": _parse_age(lowered),
-        "status": _apply_pattern(ENTITY_CONFIG["status"]["pattern"], lowered),
-        "latitude": _apply_pattern(ENTITY_CONFIG["latitude"]["pattern"], lowered),
-        "longitude": _apply_pattern(ENTITY_CONFIG["longitude"]["pattern"], lowered),
-        # Pagination and sorting
-        "limit": _apply_pattern(ENTITY_CONFIG["limit"]["pattern"], lowered),
-        "offset": _apply_pattern(ENTITY_CONFIG["offset"]["pattern"], lowered),
-        "sort_by": _apply_pattern(ENTITY_CONFIG["sort_by"]["pattern"], lowered),
-        "sort_order": _apply_pattern(ENTITY_CONFIG["sort_order"]["pattern"], lowered),
-    }
+    entities: Dict[str, Any] = {}
+    for name, config in ENTITY_CONFIG.items():
+        entity_type = config.get("type", "simple")
+        pattern = config.get("pattern")
+        if not pattern:
+            continue
+        if entity_type == "simple":
+            entities[name] = _apply_pattern(pattern, lowered)
+        elif entity_type == "date_range":
+            entities[name] = _parse_date_range(lowered)
+        elif entity_type == "age":
+            entities[name] = _parse_age(lowered)
+        else:
+            entities[name] = None
 
 
     # Normalise numeric fields where appropriate
-    if entities["year"] is not None:
-        try:
-            entities["year"] = int(entities["year"])
-        except ValueError:
-            entities["year"] = None
+    for numeric_key in ["year", "limit", "offset"]:
+        if numeric_key in entities and entities[numeric_key] is not None:
+            try:
+                entities[numeric_key] = int(entities[numeric_key])
+            except ValueError:
+                entities[numeric_key] = None
+
+    # Normalise sort_order synonyms
+    if entities.get("sort_order"):
+        order = entities["sort_order"].lower()
+        if order in {"oldest", "asc"}:
+            entities["sort_order"] = "asc"
+        elif order in {"newest", "latest", "desc"}:
+            entities["sort_order"] = "desc"
+        else:
+            entities["sort_order"] = None
 
     # Latitude/longitude remain strings; the downstream generator can cast
     # them to the required numeric type.

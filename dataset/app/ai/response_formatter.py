@@ -1,41 +1,80 @@
 """
-Production-ready response formatter for the KSP Sentinel AI.
+Production‑ready response formatter for the KSP Sentinel AI.
+Generates intent‑specific, entity‑aware summary strings.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 __all__ = ["format_response"]
 
-_INTENT_SUMMARIES: Dict[str, str] = {
-    "SEARCH_CASES": "Found {count} matching case(s).",
-    "SEARCH_ACCUSED": "Found {count} accused record(s).",
-    "SEARCH_VICTIMS": "Found {count} victim record(s).",
-    "CRIME_TREND": "Crime trend analysis generated.",
-    "HOTSPOT": "Crime hotspot analysis generated.",
-    "REPORTS": "Dashboard statistics generated.",
+def _search_cases_summary(count: int, entities: Dict[str, Any]) -> str:
+    # Build a readable phrase like "15 theft cases were found in Mysore during 2025."
+    parts: List[str] = []
+    crime = entities.get("crime_head")
+    if crime:
+        parts.append(f"{crime} cases")
+    else:
+        parts.append("cases")
+    summary = f"{count} {' '.join(parts)}"
+    district = entities.get("district")
+    if district:
+        summary += f" in {district}"
+    year = entities.get("year")
+    if year:
+        summary += f" during {year}"
+    summary += "."
+    return summary
+
+def _search_accused_summary(count: int, _: Optional[Dict[str, Any]] = None) -> str:
+    return f"Found {count} accused matching the supplied filters."
+
+def _search_victims_summary(count: int, _: Optional[Dict[str, Any]] = None) -> str:
+    return f"Found {count} victim records."
+
+def _hotspot_summary(_: int, __: Optional[Dict[str, Any]] = None) -> str:
+    return "Top crime hotspots generated."
+
+def _aggregate_count_summary(count: int, _: Optional[Dict[str, Any]] = None) -> str:
+    return f"There are {count} matching records."
+
+def _generic_summary(count: int, _: Optional[Dict[str, Any]] = None) -> str:
+    return f"Found {count} result(s)."
+
+# Mapping intent to its summary builder
+_SUMMARY_BUILDERS: Dict[str, Any] = {
+    "SEARCH_CASES": _search_cases_summary,
+    "SEARCH_ACCUSED": _search_accused_summary,
+    "SEARCH_VICTIMS": _search_victims_summary,
+    "CRIME_TREND": lambda c, e: "Crime trend analysis generated.",
+    "HOTSPOT": _hotspot_summary,
+    "REPORTS": lambda c, e: "Dashboard statistics generated.",
+    "AGGREGATE_COUNT": _aggregate_count_summary,
 }
 
+def _build_summary(intent: str, count: int, entities: Optional[Dict[str, Any]] = None) -> str:
+    builder = _SUMMARY_BUILDERS.get(intent, _generic_summary)
+    try:
+        return builder(count, entities)
+    except TypeError:
+        return builder(count)
 
-def _build_summary(intent: str, count: int) -> str:
-    template = _INTENT_SUMMARIES.get(intent)
+def format_response(intent: str, results: List[Any], entities: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Format AI query results into a consistent API response.
 
-    if template is None:
-        return f"Found {count} result(s)."
+    Args:
+        intent: Classified intent string.
+        results: List of serialized rows.
+        entities: Parsed entities dict (may be ``None``).
 
-    return template.format(count=count)
-
-
-def format_response(intent: str, results: List[Any]) -> Dict[str, Any]:
+    Returns:
+        Dict with ``summary``, ``count`` and ``results``.
     """
-    Format AI query results into a consistent API response.
-    """
-
     count = len(results)
-
+    summary = _build_summary(intent, count, entities)
     return {
-        "summary": _build_summary(intent, count),
+        "summary": summary,
         "count": count,
         "results": results,
     }
