@@ -8,7 +8,7 @@ from app.ai.intent_classifier import classify_intent
 from app.ai.query_parser import parse_query
 from app.ai.sql_generator import generate_select
 from app.ai.query_executor import execute_query
-
+from app.ai.response_formatter import format_response
 router = APIRouter()
 
 
@@ -51,16 +51,27 @@ def chat_query(payload: Dict[str, Any], db: Session = Depends(get_db)):
         )
 
     # Step 3
+        # Step 3
     select_stmt = generate_select(parsed_query)
 
     # Step 4
     results = execute_query(db, select_stmt)
+
+    try:
+        formatted = format_response(parsed_query["intent"], results)
+    except Exception:
+        formatted = {
+            "summary": None,
+            "count": len(results),
+            "results": results,
+        }
 
     return {
         "success": True,
         "query": query,
         "intent": parsed_query["intent"],
         "entities": parsed_query["entities"],
-        "count": len(results),
-        "results": results,
+        "summary": formatted["summary"],
+        "count": formatted["count"],
+        "results": formatted["results"],
     }
