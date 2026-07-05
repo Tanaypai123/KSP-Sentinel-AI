@@ -12,9 +12,10 @@ necessary.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import joinedload, selectinload
 
 # Import the verified ORM models.
 from app.models.case import (
@@ -216,6 +217,64 @@ def _apply_entity_filters(base_stmt, entities: Dict[str, Any]):
             stmt = filter_fn(stmt, value)
     return stmt
 
+def _resolve_sort_column(intent: str, sort_by: str):
+    """Map a ``sort_by`` string to an ORM column based on intent.
+
+    Extend this mapping when new sortable fields are added.
+    """
+    mapping = {
+        "cases": CaseMaster.crime_registered_date,
+        "case": CaseMaster.crime_registered_date,
+        "firs": CaseMaster.crime_no,
+        "fir": CaseMaster.crime_no,
+        "accused": Accused.accused_name,
+        "victims": Victim.victim_name,
+        "victim": Victim.victim_name,
+    }
+    return mapping.get(sort_by.lower())
+
+def _normalize_sort_order(order: Optional[str]) -> str:
+    """Return ``asc`` or ``desc`` based on user input.
+
+    Accepts synonyms ``oldest`` (asc) and ``newest``/``latest`` (desc).
+    """
+    if not order:
+        return "desc"
+    order = order.lower()
+    if order in {"asc", "oldest"}:
+        return "asc"
+    return "desc"
+
+def _apply_sort_and_pagination(stmt, entities: Dict[str, Any], intent: str):
+    """Apply ORDER BY, LIMIT and OFFSET based on extracted entities.
+
+    * ``sort_by`` – optional column name to sort on.
+    * ``sort_order`` – ``asc`` or ``desc`` (default ``desc``).
+    * ``limit`` – maximum number of rows.
+    * ``offset`` – number of rows to skip.
+    """
+    sort_by = entities.get("sort_by")
+    sort_order = _normalize_sort_order(entities.get("sort_order"))
+    if sort_by:
+        column = _resolve_sort_column(intent, sort_by)
+        if column is not None:
+            stmt = stmt.order_by(column.asc() if sort_order == "asc" else column.desc())
+    else:
+        if intent in {"SEARCH_CASES", "SEARCH_ACCUSED", "SEARCH_VICTIMS"}:
+            stmt = stmt.order_by(CaseMaster.crime_registered_date.desc())
+    limit = entities.get("limit")
+    offset = entities.get("offset")
+    if limit:
+        try:
+            stmt = stmt.limit(int(limit))
+        except Exception:
+            pass
+    if offset:
+        try:
+            stmt = stmt.offset(int(offset))
+        except Exception:
+            pass
+    return stmt
 
 def generate_select(parsed_query: Dict[str, Any]):
     """Generate a SQLAlchemy ``Select`` based on the parsed query.
@@ -232,18 +291,28 @@ def generate_select(parsed_query: Dict[str, Any]):
     # -------------------------------------------------------------------
     if intent == "SEARCH_CASES":
         stmt = select(CaseMaster)
-        return _apply_entity_filters(stmt, entities)
+        stmt = _apply_entity_filters(stmt, entities)
+        stmt = stmt.options(
+            selectinload(CaseMaster.police_station),
+            selectinload(CaseMaster.crime_major_head),
+            selectinload(CaseMaster.crime_minor_head),
+        )
+        stmt = _apply_sort_and_pagination(stmt, entities, intent)
+        return stmt
 
     if intent == "SEARCH_ACCUSED":
         stmt = select(Accused)
         # Apply accused‑specific filter directly.
         if entities.get("accused_name"):
             stmt = stmt.where(Accused.accused_name.ilike(entities["accused_name"]))
-        # For any case‑level filters, join back to CaseMaster.
+        # For any case‑level filters, join back to CaseMaster only once.
         case_entities = {k: v for k, v in entities.items() if k not in {"accused_name", "victim_name", "complainant_name"}}
         if any(case_entities.values()):
             stmt = stmt.join(Accused.case_master)
             stmt = _apply_entity_filters(stmt, case_entities)
+        # Eager load related case master to avoid N+1 queries.
+        stmt = stmt.options(selectinload(Accused.case_master))
+        stmt = _apply_sort_and_pagination(stmt, entities, intent)
         return stmt
 
     if intent == "SEARCH_VICTIMS":
@@ -260,6 +329,9 @@ def generate_select(parsed_query: Dict[str, Any]):
         if any(case_entities.values()):
             stmt = stmt.join(Victim.case_master)
             stmt = _apply_entity_filters(stmt, case_entities)
+        # Eager load related case master to avoid N+1 queries.
+        stmt = stmt.options(selectinload(Victim.case_master))
+        stmt = _apply_sort_and_pagination(stmt, entities, intent)
         return stmt
 
     if intent == "CRIME_TREND":
@@ -268,7 +340,10 @@ def generate_select(parsed_query: Dict[str, Any]):
             .group_by(CaseMaster.crime_major_head_id)
         )
         stmt = _apply_entity_filters(stmt, entities)
-        return stmt.order_by(func.count().desc()).limit(5)
+        # Apply optional pagination (limit/offset) after ordering by count descending.
+        stmt = stmt.order_by(func.count().desc())
+        stmt = _apply_sort_and_pagination(stmt, entities, intent)
+        return stmt
 
     if intent == "HOTSPOT":
         stmt = (
@@ -277,7 +352,10 @@ def generate_select(parsed_query: Dict[str, Any]):
             .group_by(CaseMaster.latitude, CaseMaster.longitude)
         )
         stmt = _apply_entity_filters(stmt, entities)
-        return stmt.order_by(func.count().desc()).limit(10)
+        # Order by hotspot count descending and apply pagination.
+        stmt = stmt.order_by(func.count().desc())
+        stmt = _apply_sort_and_pagination(stmt, entities, intent)
+        return stmt
 
     if intent == "REPORTS":
         stmt = select(

@@ -113,7 +113,13 @@ def parse_query(query: str) -> Dict[str, Any]:
         "status": _apply_pattern(ENTITY_CONFIG["status"]["pattern"], lowered),
         "latitude": _apply_pattern(ENTITY_CONFIG["latitude"]["pattern"], lowered),
         "longitude": _apply_pattern(ENTITY_CONFIG["longitude"]["pattern"], lowered),
+        # Pagination and sorting
+        "limit": _apply_pattern(ENTITY_CONFIG["limit"]["pattern"], lowered),
+        "offset": _apply_pattern(ENTITY_CONFIG["offset"]["pattern"], lowered),
+        "sort_by": _apply_pattern(ENTITY_CONFIG["sort_by"]["pattern"], lowered),
+        "sort_order": _apply_pattern(ENTITY_CONFIG["sort_order"]["pattern"], lowered),
     }
+
 
     # Normalise numeric fields where appropriate
     if entities["year"] is not None:
