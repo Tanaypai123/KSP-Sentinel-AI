@@ -39,6 +39,9 @@ def chat_query(payload: Dict[str, Any], db: Session = Depends(get_db)):
 
     # Step 1: detect intent
     detected_intent = classify_intent(query)
+    print("Detected intent:", detected_intent)
+    print("RAW QUERY:", repr(query))
+    print("CLASSIFIER RESULT:", detected_intent)
 
     # Step 2: parse current query
     parsed_query = parse_query(query)
@@ -55,15 +58,35 @@ def chat_query(payload: Dict[str, Any], db: Session = Depends(get_db)):
             detail="Unable to classify query."
         )
 
+    # ------------------------------------------------------------------
+    # PREDICT_CRIME: bypass SQL generator and query executor entirely.
+    # ------------------------------------------------------------------
+    if merged_query["intent"] == "PREDICT_CRIME":
+        from app.ai.predictor import predict_crime
+        prediction = predict_crime(db, merged_query)
+        update_state(merged_query)
+        return {
+            "success": True,
+            "query": query,
+            "intent": "PREDICT_CRIME",
+            "entities": merged_query["entities"],
+            "prediction": prediction,
+        }
+
     # Step 3: generate SQL using merged query
+    print("Detected intent:", detected_intent)
+    print("Merged query:", merged_query)
+
     select_stmt = generate_select(merged_query)
+
+    print("Generated SQL:", select_stmt)
 
     # Step 4: execute query
     results = execute_query(db, select_stmt)
 
     # Persist the merged state for next turn
     update_state(merged_query)
-
+    
     try:
         formatted = format_response(merged_query["intent"], results, merged_query.get("entities"))
     except Exception:

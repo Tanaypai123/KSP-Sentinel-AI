@@ -9,7 +9,7 @@ from typing import Dict
 ENTITY_CONFIG: Dict[str, Dict[str, str]] = {
     "fir_number": {"pattern": r"\b(ksp-\d{4,})\b", "type": "simple"},
     "crime_head": {"pattern": r"(?:crime head\s*[:\-]?\s*)?(\w+)\s+cases?", "type": "simple"},
-    "district": {"pattern": r"(?:in|from)\s+([a-z]+(?:\s+[a-z]+)*)\s*(?:district)?", "type": "simple"},
+    "district": {"pattern": r"(?:in|from)\s+((?!next\b|last\b|this\b)(?:[a-z]+)(?:\s+(?!next\b|last\b|this\b|month\b|week\b|year\b)[a-z]+)*)\s*(?:district)?", "type": "simple"},
     "police_station": {"pattern": r"(?:in|from)\s+([a-z]+(?:\s+[a-z]+)*)\s+police station", "type": "simple"},
     "accused_name": {"pattern": r"accused\s*(?:named)?\s*([a-z]+(?:\s+[a-z]+)*)", "type": "simple"},
     "victim_name": {"pattern": r"victim\s*(?:named)?\s*([a-z]+(?:\s+[a-z]+)*)", "type": "simple"},
