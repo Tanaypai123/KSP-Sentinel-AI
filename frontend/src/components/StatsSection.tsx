@@ -1,9 +1,40 @@
-import { FileText, ShieldAlert, Users, TrendingUp, Radio } from 'lucide-react';
+import { FileText, ShieldAlert, Users, Radio } from 'lucide-react';
+import { useState, useEffect, memo } from 'react';
 
-export default function StatsSection() {
+function AnimatedCounter({ targetValue }: { targetValue: string }) {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    const target = parseInt(targetValue.replace(/,/g, ''), 10);
+    if (isNaN(target)) {
+      return;
+    }
+    
+    let start = 0;
+    const duration = 1200; // 1.2s animation
+    const increment = target / (duration / 16);
+    
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= target) {
+        setCount(target);
+        clearInterval(timer);
+      } else {
+        setCount(Math.ceil(start));
+      }
+    }, 16);
+    
+    return () => clearInterval(timer);
+  }, [targetValue]);
+  
+  if (isNaN(parseInt(targetValue.replace(/,/g, ''), 10))) return <>{targetValue}</>;
+  return <>{count.toLocaleString()}</>;
+}
+
+const StatsSection = memo(function StatsSection() {
   const stats = [
     {
-      title: 'TOTAL REGISTERED FIRS',
+      title: 'Total Registered FIRs',
       value: '2,842',
       change: '+14 this week',
       trend: 'up',
@@ -13,7 +44,7 @@ export default function StatsSection() {
       glow: 'shadow-[0_0_15px_rgba(6,182,212,0.03)]'
     },
     {
-      title: 'ACTIVE CASES',
+      title: 'Active Cases',
       value: '142',
       change: '48 under forensic audit',
       trend: 'stable',
@@ -23,7 +54,7 @@ export default function StatsSection() {
       glow: 'shadow-[0_0_15px_rgba(16,185,129,0.03)]'
     },
     {
-      title: 'ARRESTS REGISTERED TODAY',
+      title: 'Arrests Registered Today',
       value: '8',
       change: '80% target execution rate',
       trend: 'up',
@@ -33,7 +64,7 @@ export default function StatsSection() {
       glow: 'shadow-[0_0_15px_rgba(99,102,241,0.03)]'
     },
     {
-      title: 'CRITICAL HIGH-RISK TARGETS',
+      title: 'Critical High-Risk Targets',
       value: '24',
       change: 'Requires immediate action',
       trend: 'high-threat',
@@ -49,13 +80,13 @@ export default function StatsSection() {
       {/* Officer Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-neutral-800/40">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-white m-0 flex items-center gap-2">
-            WELCOME OFFICER,
-            <span className="text-cyan-400 font-mono text-base font-medium bg-cyan-950/20 border border-cyan-500/10 px-2 py-0.5 rounded">
+          <h1 className="text-3xl font-bold tracking-tight text-white m-0 flex items-center gap-3">
+            Welcome Officer,
+            <span className="text-cyan-400 font-mono text-lg font-medium bg-cyan-950/20 border border-cyan-500/10 px-2 py-0.5 rounded">
               INSP. VIKRAM RATHORE
             </span>
           </h1>
-          <p className="text-xs font-mono text-neutral-500 mt-1 uppercase tracking-wider">
+          <p className="text-sm font-mono text-neutral-500 mt-1.5 uppercase tracking-wider">
             CRIME OPERATIONS PORTAL • DISTRICT: BENGALURU METROPOLITAN
           </p>
         </div>
@@ -67,15 +98,15 @@ export default function StatsSection() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => {
-          const Icon = stat.icon;
           const isHighThreat = stat.trend === 'high-threat';
 
           return (
-            <div
-              key={i}
-              className={`glass-panel p-4 rounded-xl flex flex-col justify-between border border-neutral-800 bg-neutral-900/15 ${stat.glow} relative overflow-hidden`}
+            <div 
+              key={stat.title}
+              className={`glass-panel-interactive rounded-2xl p-6 border ${stat.color} ${stat.bgColor} ${stat.glow} animate-slide-up flex flex-col justify-between relative overflow-hidden`}
+              style={{ animationDelay: `${i * 100}ms` }}
             >
               {/* Card Scanline Effect for high threat */}
               {isHighThreat && (
@@ -84,19 +115,17 @@ export default function StatsSection() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono font-bold tracking-wider text-neutral-500 uppercase">
-                  {stat.title}
-                </span>
-                <div className={`p-1.5 rounded-lg border ${stat.color} ${stat.bgColor}`}>
-                  <Icon className="w-4 h-4" />
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-widest">{stat.title}</span>
+                <div className="p-2 rounded-lg bg-neutral-900/60 border border-neutral-800">
+                  <stat.icon className={`w-4 h-4 ${stat.color.split(' ')[0]}`} />
                 </div>
               </div>
-
-              <div className="mt-3.5 flex items-baseline justify-between">
-                <div className="flex items-center space-x-1.5">
-                  <span className="text-2xl font-bold tracking-tight text-white font-mono">
-                    {stat.value}
+              
+              <div>
+                <div className="flex items-center space-x-1.5 mb-1">
+                  <span className="text-3xl font-bold tracking-tight text-white block">
+                    <AnimatedCounter targetValue={stat.value} />
                   </span>
                   {isHighThreat && (
                     <span className="flex h-2.5 w-2.5 relative">
@@ -105,12 +134,6 @@ export default function StatsSection() {
                     </span>
                   )}
                 </div>
-                {stat.trend === 'up' && (
-                  <span className="text-[10px] font-mono text-cyan-400 flex items-center">
-                    <TrendingUp className="w-3 h-3 mr-0.5" />
-                    +1.2%
-                  </span>
-                )}
               </div>
 
               <div className="mt-2.5 pt-2 border-t border-neutral-850 flex items-center justify-between text-[11px] font-sans text-neutral-400">
@@ -122,4 +145,6 @@ export default function StatsSection() {
       </div>
     </div>
   );
-}
+});
+
+export default StatsSection;

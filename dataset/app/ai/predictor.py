@@ -115,30 +115,10 @@ def _forecast_month_label() -> str:
 
 # Common alternate-name → canonical DB substring map.
 # Keeps resolver decoupled from hard-coded IDs; only normalises the search term.
-_DISTRICT_SYNONYMS: dict = {
-    "mysore":    "mysuru",
-    "bangalore": "bengaluru",
-    "mangaluru": "mangalore",
-    "hubli":     "hubli",
-    "belgaum":   "belgaum",
-    "belagavi":  "belgaum",
-}
-
-_CRIME_HEAD_SYNONYMS: dict = {
-    "burglary":  "theft",    # no "burglary" row → map to nearest match
-    "larceny":   "theft",
-    "homicide":  "murder",
-    "battery":   "assault",
-    "dacoity":   "robbery",
-}
-
-
-def _normalise(name: str, synonyms: dict) -> str:
-    """Return the canonical search term for *name*, falling back to *name* itself."""
-    return synonyms.get(name.lower().strip(), name.lower().strip())
+from app.ai.normalizer import normalize_district, normalize_crime_head
 
 def _resolve_district_id(db: Session, name: str) -> Optional[int]:
-    canonical = _normalise(name, _DISTRICT_SYNONYMS)
+    canonical = normalize_district(name) or name
     row = db.execute(
         select(District.district_id)
         .where(District.district_name.ilike(f"%{canonical}%"))
@@ -148,7 +128,7 @@ def _resolve_district_id(db: Session, name: str) -> Optional[int]:
 
 
 def _resolve_crime_head_id(db: Session, name: str) -> Optional[int]:
-    canonical = _normalise(name, _CRIME_HEAD_SYNONYMS)
+    canonical = normalize_crime_head(name) or name
     row = db.execute(
         select(CrimeHead.crime_head_id)
         .where(CrimeHead.crime_group_name.ilike(f"%{canonical}%"))

@@ -72,6 +72,13 @@ def format_response(intent: str, results: List[Any], entities: Optional[Dict[str
         Dict with ``summary``, ``count`` and ``results``.
     """
     count = len(results)
+    if intent == "AGGREGATE_COUNT" and results:
+        row = results[0]
+        if isinstance(row, dict) and row:
+            # Extract first value from the mapping (e.g. count_1 or count)
+            count = int(list(row.values())[0])
+        elif isinstance(row, (int, float)):
+            count = int(row)
     summary = _build_summary(intent, count, entities)
     return {
         "summary": summary,

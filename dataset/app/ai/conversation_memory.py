@@ -31,12 +31,26 @@ def merge_with_last(new_state: Dict[str, Any]) -> Dict[str, Any]:
     prev_entities = _last_state.get("entities", {})
     new_entities = new_state.get("entities", {})
     merged_entities: Dict[str, Any] = {}
+    allowed_carry_keys = {
+        "crime_head",
+        "structured_crime_type",
+        "status",
+        "date_range",
+        "year",
+        "structured_date_from",
+        "structured_date_to",
+        "structured_prediction",
+    }
+
     for key in set(prev_entities) | set(new_entities):
         new_val = new_entities.get(key)
         if new_val is not None:
             merged_entities[key] = new_val
         else:
-            merged_entities[key] = prev_entities.get(key)
+            if key in allowed_carry_keys:
+                merged_entities[key] = prev_entities.get(key)
+            else:
+                merged_entities[key] = None
     return {"intent": merged_intent, "entities": merged_entities}
 
 def update_state(state: Dict[str, Any]) -> None:

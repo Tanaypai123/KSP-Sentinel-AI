@@ -1,21 +1,39 @@
-import { useState } from 'react';
+import { useState, Suspense, lazy } from 'react';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
-import StatsSection from './components/StatsSection';
+import DashboardHeader from './components/DashboardHeader';
+import DashboardKPIs from './components/DashboardKPIs';
+import MissionIntelligencePanel from './components/MissionIntelligencePanel';
+import DashboardFooter from './components/DashboardFooter';
 import AIWorkspace from './components/AIWorkspace';
-import RightInsightsPanel from './components/RightInsightsPanel';
+import DashboardAIPreview from './components/DashboardAIPreview';
 import BottomSection from './components/BottomSection';
-import NetworkGraphView from './components/NetworkGraphView';
-import CrimeMapView from './components/CrimeMapView';
-import DossierView from './components/DossierView';
 import type { FIR } from './types';
 import { FileDown, Printer, Sliders, Database } from 'lucide-react';
+
+// Lazy loaded heavy views
+const NetworkGraphView = lazy(() => import('./components/NetworkGraphView'));
+const CrimeMapView = lazy(() => import('./components/CrimeMapView'));
+const DossierView = lazy(() => import('./components/DossierView'));
+
+const ViewSkeleton = () => (
+  <div className="w-full h-full space-y-6 animate-pulse-slow">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="h-24 skeleton-shimmer rounded-xl border border-neutral-800 bg-neutral-900/50"></div>
+      <div className="h-24 skeleton-shimmer rounded-xl border border-neutral-800 bg-neutral-900/50"></div>
+      <div className="h-24 skeleton-shimmer rounded-xl border border-neutral-800 bg-neutral-900/50"></div>
+      <div className="h-24 skeleton-shimmer rounded-xl border border-neutral-800 bg-neutral-900/50"></div>
+    </div>
+    <div className="h-[500px] skeleton-shimmer rounded-2xl border border-neutral-800 bg-neutral-900/50"></div>
+  </div>
+);
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [aiWorkspaceQuery, setAiWorkspaceQuery] = useState('');
+  const [isAIFullscreen, setIsAIFullscreen] = useState(false);
 
   // Handle suggested queries or clicking an alert
   const handleQueryRoute = (query: string) => {
@@ -46,38 +64,50 @@ export default function App() {
     switch (currentTab) {
       case 'dashboard':
         return (
-          <div className="space-y-6">
-            <StatsSection />
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-3">
-                <AIWorkspace 
-                  initialSearchQuery={aiWorkspaceQuery} 
-                  onSelectEntity={handleSelectEntity} 
-                />
-              </div>
-              <div className="lg:col-span-1">
-                <RightInsightsPanel onQueryClick={handleQueryRoute} />
-              </div>
+          <div className="h-full">
+            {/* SECTION 1: Header */}
+            <DashboardHeader />
+            
+            <div className="columns-1 md:columns-2 xl:columns-3 gap-6 mt-6">
+              {/* SECTION 2: Four KPI Cards */}
+              <DashboardKPIs />
+              
+              {/* SECTION 3: AI Co-Pilot & Mission Intelligence */}
+              <DashboardAIPreview 
+                onOpenWorkspace={() => setCurrentTab('assistant')} 
+              />
+
+              <MissionIntelligencePanel onQuerySelect={handleQueryRoute} />
+              
+              {/* SECTION 4: Recent FIRs & Tactical Alerts */}
+              <BottomSection 
+                onSelectFIR={handleSelectFIR} 
+                onSelectSearch={handleQueryRoute}
+              />
+              
+              {/* SECTION 5: Recent Investigations, Quick Access, Searches */}
+              <DashboardFooter onQuerySelect={handleQueryRoute} />
             </div>
-            <BottomSection 
-              onSelectFIR={handleSelectFIR} 
-              onSelectSearch={handleQueryRoute} 
-            />
           </div>
         );
       case 'assistant':
         return (
-          <div className="space-y-4">
-            <div className="pb-3 border-b border-neutral-900">
-              <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">
-                KSP VIRTUAL WORKSPACE
-              </span>
-              <h2 className="text-lg font-bold text-white m-0">Dedicated AI Intelligence Assistant</h2>
-            </div>
-            <div className="h-[600px]">
+          <div className={isAIFullscreen ? "w-full h-full flex flex-col" : "space-y-4 flex flex-col h-full"}>
+            {!isAIFullscreen && (
+              <div className="pb-3 border-b border-neutral-900 flex-shrink-0">
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">
+                  KSP VIRTUAL WORKSPACE
+                </span>
+                <h2 className="text-lg font-bold text-white m-0">Dedicated AI Intelligence Assistant</h2>
+              </div>
+            )}
+            <div className={isAIFullscreen ? "flex-1 min-h-0" : "flex-1 min-h-[500px]"}>
               <AIWorkspace 
                 initialSearchQuery={aiWorkspaceQuery} 
                 onSelectEntity={handleSelectEntity} 
+                className="h-full"
+                isFullscreen={isAIFullscreen}
+                onToggleFullscreen={() => setIsAIFullscreen(!isAIFullscreen)}
               />
             </div>
           </div>
@@ -91,6 +121,31 @@ export default function App() {
               </span>
               <h2 className="text-lg font-bold text-white m-0">First Information Reports Directory</h2>
             </div>
+            
+            {/* FIR Page Summary KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="glass-panel p-4 rounded-xl border border-neutral-800 bg-neutral-950/60">
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider block mb-1">Total FIR Count</span>
+                <span className="text-2xl font-bold text-white block">12,482</span>
+                <span className="text-[10px] text-emerald-400 mt-1 block">↑ 12% vs last month</span>
+              </div>
+              <div className="glass-panel p-4 rounded-xl border border-neutral-800 bg-neutral-950/60">
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider block mb-1">Active Investigations</span>
+                <span className="text-2xl font-bold text-cyan-400 block">3,190</span>
+                <span className="text-[10px] text-neutral-400 mt-1 block">Across 42 stations</span>
+              </div>
+              <div className="glass-panel p-4 rounded-xl border border-neutral-800 bg-neutral-950/60">
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider block mb-1">Critical Priority</span>
+                <span className="text-2xl font-bold text-rose-500 block">142</span>
+                <span className="text-[10px] text-rose-400/80 mt-1 block">Requires immediate attention</span>
+              </div>
+              <div className="glass-panel p-4 rounded-xl border border-neutral-800 bg-neutral-950/60">
+                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider block mb-1">Closed / Resolved</span>
+                <span className="text-2xl font-bold text-neutral-300 block">8,450</span>
+                <span className="text-[10px] text-emerald-400 mt-1 block">68% resolution rate</span>
+              </div>
+            </div>
+
             <BottomSection 
               onSelectFIR={handleSelectFIR} 
               onSelectSearch={handleQueryRoute} 
@@ -99,15 +154,21 @@ export default function App() {
         );
       case 'accused':
         return (
-          <DossierView searchFilter={searchValue} />
+          <Suspense fallback={<ViewSkeleton />}>
+            <DossierView searchFilter={searchValue} />
+          </Suspense>
         );
       case 'map':
         return (
-          <CrimeMapView />
+          <Suspense fallback={<ViewSkeleton />}>
+            <CrimeMapView />
+          </Suspense>
         );
       case 'network':
         return (
-          <NetworkGraphView />
+          <Suspense fallback={<ViewSkeleton />}>
+            <NetworkGraphView />
+          </Suspense>
         );
       case 'reports':
         return (
@@ -137,8 +198,48 @@ export default function App() {
               </div>
             </div>
 
-            {/* Simulated report brief layout */}
-            <div className="glass-panel rounded-2xl border border-neutral-800 bg-neutral-950/60 p-6 space-y-6 max-w-4xl mx-auto font-mono text-xs text-neutral-400 relative overflow-hidden">
+            {/* Reports Layout Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              
+              {/* Left Sidebar: Report Analytics & History */}
+              <div className="lg:col-span-1 space-y-6">
+                <div className="glass-panel rounded-xl border border-neutral-800 bg-neutral-950/60 p-5 space-y-4">
+                  <span className="block text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-2 border-b border-neutral-900 pb-2">Document Statistics</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-neutral-400">Total Generated</span>
+                    <span className="text-sm font-bold text-white">1,402</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-neutral-400">PDF Exports (Month)</span>
+                    <span className="text-sm font-bold text-cyan-400">845</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-neutral-400">Dossiers Printed</span>
+                    <span className="text-sm font-bold text-neutral-300">312</span>
+                  </div>
+                </div>
+
+                <div className="glass-panel rounded-xl border border-neutral-800 bg-neutral-950/60 p-5 space-y-4">
+                  <span className="block text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-2 border-b border-neutral-900 pb-2">Recent Archives</span>
+                  <div className="space-y-3">
+                    <div className="cursor-pointer hover:bg-neutral-900/50 p-2 -mx-2 rounded transition">
+                      <span className="block text-xs font-bold text-white">Gowda_Net Correlation</span>
+                      <span className="block text-[10px] text-neutral-500 mt-0.5">2 hrs ago • KSP-INTEL-281-06</span>
+                    </div>
+                    <div className="cursor-pointer hover:bg-neutral-900/50 p-2 -mx-2 rounded transition">
+                      <span className="block text-xs font-bold text-neutral-300">Q2 Cyber Incidents Summary</span>
+                      <span className="block text-[10px] text-neutral-500 mt-0.5">1 day ago • KSP-REP-442-12</span>
+                    </div>
+                    <div className="cursor-pointer hover:bg-neutral-900/50 p-2 -mx-2 rounded transition">
+                      <span className="block text-xs font-bold text-neutral-300">Financial Ledger Analysis</span>
+                      <span className="block text-[10px] text-neutral-500 mt-0.5">3 days ago • KSP-FIN-109-04</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Simulated report brief layout */}
+              <div className="glass-panel rounded-2xl border border-neutral-800 bg-neutral-950/60 p-6 space-y-6 lg:col-span-3 font-mono text-xs text-neutral-400 relative overflow-hidden">
               {/* Draft Watermark */}
               <div className="absolute inset-0 flex items-center justify-center rotate-12 opacity-[0.015] pointer-events-none select-none">
                 <span className="text-8xl font-bold font-sans">SECRET</span>
@@ -186,6 +287,7 @@ export default function App() {
                 <span>AUTHENTICATED BY SENTINEL ENGINE v3.5</span>
               </div>
             </div>
+            </div>
           </div>
         );
       case 'settings':
@@ -198,7 +300,7 @@ export default function App() {
               <h2 className="text-lg font-bold text-white m-0">Sentinel Config Operations</h2>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* Configuration panel */}
               <div className="glass-panel rounded-2xl border border-neutral-800 bg-neutral-950/60 p-5 space-y-5 lg:col-span-1">
                 <div className="flex items-center space-x-2 pb-2 border-b border-neutral-900">
@@ -274,6 +376,59 @@ export default function App() {
                   <div>[2026-07-04 14:25:04] AI INFERENCE REQUEST PROCESSED (TOKEN_LENGTH: 412) IN 0.88s</div>
                 </div>
               </div>
+
+              {/* System Health Diagnostics */}
+              <div className="glass-panel rounded-2xl border border-neutral-800 bg-neutral-950/60 p-5 space-y-5 lg:col-span-1">
+                <div className="flex items-center space-x-2 pb-2 border-b border-neutral-900">
+                  <Database className="w-4 h-4 text-cyan-400" />
+                  <span className="text-xs font-mono font-bold tracking-wider text-white uppercase">
+                    SYSTEM HEALTH
+                  </span>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-[10px] font-mono text-neutral-500 mb-1">
+                      <span>API GATEWAY</span>
+                      <span className="text-emerald-400">ONLINE</span>
+                    </div>
+                    <div className="w-full bg-neutral-900 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full w-full" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[10px] font-mono text-neutral-500 mb-1">
+                      <span>AI INFERENCE ENGINE</span>
+                      <span className="text-emerald-400">NOMINAL</span>
+                    </div>
+                    <div className="w-full bg-neutral-900 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full w-[95%]" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[10px] font-mono text-neutral-500 mb-1">
+                      <span>MEMORY ALLOCATION</span>
+                      <span className="text-amber-400">82%</span>
+                    </div>
+                    <div className="w-full bg-neutral-900 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-amber-500 h-full w-[82%]" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[10px] font-mono text-neutral-500 mb-1">
+                      <span>GPU COMPUTE NODE</span>
+                      <span className="text-cyan-400">45%</span>
+                    </div>
+                    <div className="w-full bg-neutral-900 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-cyan-500 h-full w-[45%]" />
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-neutral-900 flex justify-between items-center text-[10px] font-mono text-neutral-500">
+                    <span>ENGINE VERSION:</span>
+                    <span className="text-white">v3.5.7-KSP</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -283,28 +438,36 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-200 intelligence-grid flex flex-row font-sans">
+    <div className={`h-screen overflow-hidden bg-neutral-950 text-neutral-200 font-sans ${isAIFullscreen ? 'flex flex-col' : 'intelligence-grid flex flex-row'}`}>
       {/* Sidebar Navigation */}
-      <Sidebar
-        currentTab={currentTab}
-        setCurrentTab={(tab) => {
-          setCurrentTab(tab);
-          // clear search state if navigating tabs
-          if (tab !== 'accused') setSearchValue('');
-        }}
-        isCollapsed={isSidebarCollapsed}
-        setIsCollapsed={setIsSidebarCollapsed}
-      />
+      {!isAIFullscreen && (
+        <Sidebar
+          currentTab={currentTab}
+          setCurrentTab={(tab) => {
+            setCurrentTab(tab);
+            // clear search state if navigating tabs
+            if (tab !== 'accused') setSearchValue('');
+          }}
+          isCollapsed={isSidebarCollapsed}
+          setIsCollapsed={setIsSidebarCollapsed}
+        />
+      )}
 
       {/* Main Console */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <Navbar 
-          onSearchChange={handleQueryRoute} 
-          searchValue={searchValue} 
-        />
-        
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
-          {renderMainContent()}
+      <div className={`flex-1 flex flex-col min-w-0 ${isAIFullscreen ? 'w-screen h-screen' : ''}`}>
+        <main className="flex-1 flex flex-col h-screen overflow-hidden">
+          {!isAIFullscreen && (
+            <Navbar 
+              searchValue={searchValue} 
+              setSearchValue={setSearchValue} 
+            />
+          )}
+          
+          <div className={isAIFullscreen ? "flex-1 overflow-y-auto animate-fade-in" : "flex-1 overflow-y-auto p-4 lg:px-6 lg:py-5 animate-fade-in custom-scrollbar"} key={currentTab}>
+            <div className={isAIFullscreen ? "w-full h-full flex flex-col" : "max-w-7xl mx-auto h-full flex flex-col"}>
+              {renderMainContent()}
+            </div>
+          </div>
         </main>
       </div>
     </div>

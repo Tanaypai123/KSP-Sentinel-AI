@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Search, Bell, Shield, ChevronDown, User, LogOut, Terminal, Check } from 'lucide-react';
 import { mockNotifications } from '../mockData';
 import type { Notification } from '../types';
 
 interface NavbarProps {
-  onSearchChange: (search: string) => void;
+  setSearchValue: (search: string) => void;
   searchValue: string;
 }
 
-export default function Navbar({ onSearchChange, searchValue }: NavbarProps) {
+const Navbar = memo(function Navbar({ setSearchValue, searchValue }: NavbarProps) {
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [isOpenNotifications, setIsOpenNotifications] = useState(false);
   const [isOpenProfile, setIsOpenProfile] = useState(false);
@@ -47,33 +47,33 @@ export default function Navbar({ onSearchChange, searchValue }: NavbarProps) {
     setIsOpenNotifications(false);
     // Extract FIR name or accused name from text if possible
     if (text.includes('FIR 402/2026') || text.includes('Gowda_Net')) {
-      onSearchChange('FIR 402/2026');
+      setSearchValue('FIR 402/2026');
     } else if (text.includes('Munna Qureshi') || text.includes('Hubballi')) {
-      onSearchChange('Munna Qureshi');
+      setSearchValue('Munna Qureshi');
     } else if (text.includes('FIR 156/2026') || text.includes('Rostova')) {
-      onSearchChange('Elena Rostova');
+      setSearchValue('Elena Rostova');
     } else {
-      onSearchChange(text);
+      setSearchValue(text);
     }
   };
 
   return (
     <header className="glass-panel sticky top-0 z-30 flex items-center justify-between h-16 px-6 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur-md">
-      {/* Search Input */}
-      <div className="flex-1 max-w-lg">
-        <div className="relative group">
-          <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-neutral-500 group-focus-within:text-cyan-400 transition-colors" />
-          <input
-            type="text"
-            placeholder="Search FIR, accused dossier, tower location..."
-            value={searchValue}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full h-9 pl-10 pr-12 text-sm font-sans text-neutral-200 bg-neutral-900/60 border border-neutral-800 rounded-lg focus:outline-none focus:border-cyan-500/40 focus:bg-neutral-900 transition-all placeholder:text-neutral-600"
-          />
-          <div className="absolute right-3 top-2 flex items-center space-x-0.5 px-1.5 py-0.5 border border-neutral-800 bg-neutral-950 rounded text-[9px] font-mono text-neutral-500 select-none">
-            <span>⌘</span>
-            <span>K</span>
-          </div>
+      {/* Search Bar */}
+      <div className="relative group flex-1 max-w-xl">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search className="w-5 h-5 text-cyan-500/70 group-focus-within:text-cyan-400 transition-colors" />
+        </div>
+        <input
+          type="text"
+          placeholder="Query Sentinel Engine... (e.g. 'FIR 402/2026', 'Rajesh Gowda')"
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          className="w-full bg-neutral-900/50 border border-neutral-800 text-neutral-100 text-sm rounded-xl pl-11 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 focus:bg-neutral-900 transition-all shadow-inner placeholder-neutral-500 font-mono"
+        />
+        <div className="absolute right-3 top-3 flex items-center space-x-0.5 px-1.5 py-0.5 border border-neutral-800 bg-neutral-950 rounded text-[10px] font-mono text-neutral-500 select-none">
+          <span>⌘</span>
+          <span>K</span>
         </div>
       </div>
 
@@ -86,8 +86,8 @@ export default function Navbar({ onSearchChange, searchValue }: NavbarProps) {
         </div>
 
         {/* Clearance Badge */}
-        <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 border border-rose-500/10 bg-rose-500/5 text-rose-500 rounded text-[10px] font-mono font-bold tracking-widest">
-          <Shield className="w-3 h-3 text-rose-500" />
+        <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 border border-rose-500/10 bg-rose-500/5 text-rose-500 rounded text-xs font-mono font-bold tracking-widest">
+          <Shield className="w-4 h-4 text-rose-500" />
           <span>SEC CLEARANCE: TOP SECRET</span>
         </div>
 
@@ -192,4 +192,6 @@ export default function Navbar({ onSearchChange, searchValue }: NavbarProps) {
       </div>
     </header>
   );
-}
+});
+
+export default Navbar;

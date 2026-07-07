@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Compass, MapPin, X, Layers } from 'lucide-react';
+import { useState, memo } from 'react';
+import { MapPin, Layers, Compass, X } from 'lucide-react';
 
 interface Hotspot {
   id: string;
@@ -11,7 +11,7 @@ interface Hotspot {
   activeSuspects: string[];
 }
 
-export default function CrimeMapView() {
+const CrimeMapView = memo(function CrimeMapView() {
   const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
@@ -68,20 +68,60 @@ export default function CrimeMapView() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full min-h-[580px]">
+    <div className="flex flex-col space-y-6 h-full min-h-[580px]">
+      {/* Crime Map Analytics KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="glass-panel p-5 rounded-xl border border-neutral-800 bg-neutral-950/60 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider block mb-1">Active Zones</span>
+            <span className="text-2xl font-bold text-white block">14</span>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+            <Layers className="w-5 h-5 text-cyan-400" />
+          </div>
+        </div>
+        <div className="glass-panel p-5 rounded-xl border border-neutral-800 bg-neutral-950/60 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider block mb-1">Top District</span>
+            <span className="text-lg font-bold text-rose-500 block truncate">Koramangala IT</span>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+            <MapPin className="w-5 h-5 text-rose-400" />
+          </div>
+        </div>
+        <div className="glass-panel p-5 rounded-xl border border-neutral-800 bg-neutral-950/60 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider block mb-1">Heatmap Peak</span>
+            <span className="text-2xl font-bold text-amber-500 block">88%</span>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+            <Compass className="w-5 h-5 text-amber-400" />
+          </div>
+        </div>
+        <div className="glass-panel p-5 rounded-xl border border-neutral-800 bg-neutral-950/60">
+          <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider block mb-1">Category Breakout</span>
+          <div className="flex items-center space-x-2 mt-1">
+            <span className="text-xs font-mono text-cyan-400 font-bold">22 CYBER</span>
+            <span className="text-xs text-neutral-600">|</span>
+            <span className="text-xs font-mono text-purple-400 font-bold">14 NDPS</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1">
       {/* Sidebar controls */}
-      <div className="glass-panel rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4 lg:col-span-1 flex flex-col justify-between">
+      <div className="glass-panel rounded-2xl border border-neutral-800 bg-neutral-950/60 p-6 lg:col-span-1 flex flex-col justify-between">
         <div className="space-y-4">
-          <div className="flex items-center space-x-2 pb-2.5 border-b border-neutral-900">
-            <Compass className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-mono font-bold tracking-wider text-white uppercase">
-              GEOLOCATION RADAR
+          <div className="flex items-center space-x-3 pb-3 border-b border-neutral-900">
+            <Compass className="w-5 h-5 text-cyan-400" />
+            <span className="text-sm font-sans font-semibold tracking-wide text-white">
+              Geolocation Radar
             </span>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono text-neutral-500 uppercase flex items-center">
-              <Layers className="w-3.5 h-3.5 mr-1 text-cyan-500" />
+          <div className="space-y-3">
+            <label className="text-xs font-mono text-neutral-500 uppercase flex items-center">
+              <Layers className="w-4 h-4 mr-1.5 text-cyan-500" />
               HEATMAP CATEGORIES
             </label>
             <div className="flex flex-col space-y-1.5">
@@ -94,7 +134,7 @@ export default function CrimeMapView() {
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`w-full text-left px-3 py-1.5 rounded-lg border text-xs font-mono transition cursor-pointer ${
+                  className={`w-full text-left px-4 py-2 rounded-lg border text-sm font-sans font-medium transition cursor-pointer ${
                     activeCategory === cat.id
                       ? 'bg-cyan-950/20 border-cyan-500/30 text-cyan-400'
                       : 'border-transparent text-neutral-450 hover:bg-neutral-900 hover:text-white'
@@ -109,10 +149,10 @@ export default function CrimeMapView() {
 
         {/* Legend stats */}
         <div className="pt-4 border-t border-neutral-900 space-y-3">
-          <span className="block text-[9px] font-mono text-neutral-600 uppercase font-bold tracking-wider">
+          <span className="block text-xs font-mono text-neutral-600 uppercase font-bold tracking-wider">
             District Stats
           </span>
-          <div className="space-y-1 text-[11px] font-mono text-neutral-450">
+          <div className="space-y-2 text-xs font-mono text-neutral-450">
             <div className="flex justify-between">
               <span>CYBER EXTORTION:</span>
               <span className="text-cyan-400 font-bold">22 CASES</span>
@@ -129,24 +169,25 @@ export default function CrimeMapView() {
         </div>
       </div>
 
-      {/* Map display - Span 3 */}
-      <div className="glass-panel rounded-2xl border border-neutral-800 bg-neutral-950/40 lg:col-span-3 min-h-[500px] relative overflow-hidden flex flex-col">
-        {/* Map UI Details */}
-        <div className="absolute top-4 left-4 z-10 pointer-events-none">
-          <div className="bg-neutral-950/80 border border-neutral-800 p-2.5 rounded-lg max-w-xs backdrop-blur">
-            <span className="block text-[9px] font-mono text-cyan-400 font-bold uppercase tracking-widest">
+      {/* Map display area */}
+      <div className="glass-panel rounded-2xl border border-neutral-800 bg-neutral-950/60 p-1 lg:col-span-3 relative overflow-hidden flex flex-col group">
+        
+        {/* Animated Map Scanning Line */}
+        <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden rounded-2xl">
+          <div className="w-full h-1 bg-cyan-500/30 animate-scanline shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
+        </div>
+
+        <div className="flex-1 w-full bg-[#0a0a0c] rounded-xl relative overflow-hidden intelligence-grid">
+          <div className="bg-neutral-950/80 border border-neutral-800 p-3 rounded-lg max-w-xs backdrop-blur absolute top-4 left-4 z-10">
+            <span className="block text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-widest">
               BENGALURU DISTRICT SECTORS
             </span>
-            <span className="block text-xs font-bold text-neutral-200 mt-1">
+            <span className="block text-sm font-bold text-neutral-200 mt-1">
               Active Radar Hotspots: {filteredHotspots.length}
             </span>
           </div>
-        </div>
 
-        {/* SVG Map Canvas */}
-        <div className="flex-1 w-full flex items-center justify-center relative bg-black/40">
           <svg className="w-full h-full min-h-[460px]" viewBox="0 0 650 420">
-            {/* Grid overlay */}
             <defs>
               <pattern id="mapGrid" width="40" height="40" patternUnits="userSpaceOnUse">
                 <rect width="40" height="40" fill="none" stroke="rgba(255, 255, 255, 0.015)" strokeWidth="0.5" />
@@ -154,7 +195,6 @@ export default function CrimeMapView() {
             </defs>
             <rect width="100%" height="100%" fill="url(#mapGrid)" />
 
-            {/* Simulated Geographic Outlines */}
             <path
               d="M 50 150 Q 150 120 220 180 T 350 200 T 500 150 T 600 280"
               fill="none"
@@ -170,14 +210,12 @@ export default function CrimeMapView() {
               strokeDasharray="2 4"
             />
 
-            {/* Glowing Hotspots */}
             {filteredHotspots.map((hs) => (
               <g
                 key={hs.id}
                 onClick={() => setSelectedHotspot(hs)}
                 className="group cursor-pointer animate-pulse-slow"
               >
-                {/* Ping Ring */}
                 <circle
                   cx={hs.coordinates.x}
                   cy={hs.coordinates.y}
@@ -185,7 +223,6 @@ export default function CrimeMapView() {
                   className={`${getCategoryColor(hs.category)} opacity-10 group-hover:opacity-20 transition duration-300`}
                 />
                 
-                {/* Core Pin point */}
                 <circle
                   cx={hs.coordinates.x}
                   cy={hs.coordinates.y}
@@ -193,7 +230,6 @@ export default function CrimeMapView() {
                   className={`${getCategoryColor(hs.category)} group-hover:scale-125 transition duration-300`}
                 />
 
-                {/* Hotspot Radar pulse */}
                 <circle
                   cx={hs.coordinates.x}
                   cy={hs.coordinates.y}
@@ -202,11 +238,10 @@ export default function CrimeMapView() {
                   style={{ animationDuration: '3s' }}
                 />
 
-                {/* Label tag */}
                 <text
                   x={hs.coordinates.x}
                   y={hs.coordinates.y - 14}
-                  className="fill-neutral-400 font-mono text-[9px] font-bold select-none text-center bg-black/80 pointer-events-none"
+                  className="fill-neutral-400 font-mono text-[10px] font-bold select-none text-center bg-black/80 pointer-events-none"
                   textAnchor="middle"
                 >
                   {hs.name}
@@ -215,12 +250,12 @@ export default function CrimeMapView() {
             ))}
           </svg>
 
-          {/* Hotspot details slide drawer inside map workspace */}
+          {/* Hotspot details panel (Slides in from right) */}
           {selectedHotspot && (
-            <div className="absolute right-4 bottom-4 w-80 bg-neutral-950 border border-neutral-850 p-4 rounded-xl shadow-2xl space-y-3 z-15 backdrop-blur">
-              <div className="flex items-center justify-between border-b border-neutral-900 pb-2">
-                <span className="text-[10px] font-mono font-bold tracking-wider text-cyan-400 uppercase flex items-center">
-                  <MapPin className="w-3.5 h-3.5 mr-1" />
+            <div className="absolute top-4 right-4 w-80 glass-panel border border-neutral-800/80 bg-neutral-950/90 rounded-xl shadow-2xl z-20 backdrop-blur-xl animate-fade-in transform transition-transform duration-300 ease-out translate-x-0">
+              <div className="p-4 border-b border-neutral-900/50 flex justify-between items-start">
+                <span className="text-xs font-mono font-bold tracking-wider text-cyan-400 uppercase flex items-center">
+                  <MapPin className="w-4 h-4 mr-1.5" />
                   SECTOR INFORMATION
                 </span>
                 <button
@@ -232,26 +267,26 @@ export default function CrimeMapView() {
               </div>
 
               <div className="space-y-2">
-                <div className="text-sm font-bold text-white">{selectedHotspot.name}</div>
-                <div className="grid grid-cols-2 gap-2 text-xs font-mono text-neutral-400">
+                <div className="text-base font-bold text-white">{selectedHotspot.name}</div>
+                <div className="grid grid-cols-2 gap-3 text-sm font-mono text-neutral-400">
                   <div>
-                    <span className="block text-[9px] text-neutral-500 uppercase">ACTIVE INCIDENTS</span>
+                    <span className="block text-[10px] text-neutral-500 uppercase">ACTIVE INCIDENTS</span>
                     <span className="text-white font-bold">{selectedHotspot.firCount} FIRs</span>
                   </div>
                   <div>
-                    <span className="block text-[9px] text-neutral-500 uppercase">DENSITY INDEX</span>
+                    <span className="block text-[10px] text-neutral-500 uppercase">DENSITY INDEX</span>
                     <span className="text-rose-400 font-bold">{selectedHotspot.riskIndex}% RISK</span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-neutral-900 space-y-2">
-                <span className="block text-[9px] font-mono text-neutral-500 uppercase">Suspects Flagged in Grid</span>
+              <div className="pt-3 border-t border-neutral-900 space-y-3">
+                <span className="block text-[10px] font-mono text-neutral-500 uppercase">Suspects Flagged in Grid</span>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedHotspot.activeSuspects.map((susp, idx) => (
                     <span
                       key={idx}
-                      className="px-2 py-0.5 rounded bg-neutral-900 border border-neutral-850 text-[10px] font-sans font-medium text-neutral-350"
+                      className="px-2 py-1 rounded bg-neutral-900 border border-neutral-850 text-xs font-sans font-medium text-neutral-350"
                     >
                       {susp}
                     </span>
@@ -263,5 +298,8 @@ export default function CrimeMapView() {
         </div>
       </div>
     </div>
+    </div>
   );
-}
+});
+
+export default CrimeMapView;

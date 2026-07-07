@@ -1,0 +1,105 @@
+export const dictionary = {
+  // Common
+  'Officer': { en: 'Officer', kn: 'ಅಧಿಕಾರಿ' },
+  'Model': { en: 'Model', kn: 'ಮಾದರಿ' },
+  'Lang': { en: 'Lang', kn: 'ಭಾಷೆ' },
+  'Auto Detect': { en: 'Auto Detect', kn: 'ಸ್ವಯಂ ಪತ್ತೆ' },
+  'Generated Date': { en: 'Generated Date', kn: 'ರಚಿಸಿದ ದಿನಾಂಕ' },
+  'Generated Time': { en: 'Generated Time', kn: 'ರಚಿಸಿದ ಸಮಯ' },
+  'Session ID': { en: 'Session ID', kn: 'ಅಧಿವೇಶನ ಐಡಿ' },
+  'Classification': { en: 'Classification', kn: 'ವರ್ಗೀಕರಣ' },
+  'CONFIDENTIAL': { en: 'CONFIDENTIAL', kn: 'ಗೌಪ್ಯ' },
+  
+  // Dashboard & KPI
+  'TOTAL QUERIES': { en: 'TOTAL QUERIES', kn: 'ಒಟ್ಟು ಪ್ರಶ್ನೆಗಳು' },
+  'RECORDS RETRIEVED/PREDICTED': { en: 'RECORDS RETRIEVED/PREDICTED', kn: 'ಪಡೆದ / ಅಂದಾಜು ದಾಖಲೆಗಳು' },
+  'REPORT THREAT LEVEL': { en: 'REPORT THREAT LEVEL', kn: 'ವರದಿ ಅಪಾಯ ಮಟ್ಟ' },
+  'AI CONFIDENCE': { en: 'AI CONFIDENCE', kn: 'ವಿಶ್ವಾಸ ಮಟ್ಟ' },
+  '1. EXECUTIVE SUMMARY': { en: '1. EXECUTIVE SUMMARY', kn: '೧. ಕಾರ್ಯನಿರ್ವಾಹಕ ಸಾರಾಂಶ' },
+  '2. KEY FINDINGS': { en: '2. KEY FINDINGS', kn: '೨. ಪ್ರಮುಖ ಸಂಶೋಧನೆಗಳು' },
+  '3. AI RECOMMENDATIONS': { en: '3. AI RECOMMENDATIONS', kn: '೩. ಎಐ ಶಿಫಾರಸುಗಳು' },
+  
+  // Labels
+  'Predicted Cases': { en: 'Predicted Cases', kn: 'ಅಂದಾಜು ಪ್ರಕರಣಗಳು' },
+  'Confidence Level': { en: 'Confidence Level', kn: 'ವಿಶ್ವಾಸ ಮಟ್ಟ' },
+  'Growth Trend': { en: 'Growth Trend', kn: 'ಬೆಳವಣಿಗೆ ಪ್ರವೃತ್ತಿ' },
+  'Risk Level': { en: 'Risk Level', kn: 'ಅಪಾಯ ಮಟ್ಟ' },
+  'Risk': { en: 'Risk', kn: 'ಅಪಾಯ' },
+  'Timeline': { en: 'Timeline', kn: 'ಕಾಲರೇಖೆ' },
+  'Analytic Reasoning': { en: 'Analytic Reasoning', kn: 'ವಿಶ್ಲೇಷಣೆ' },
+  'Estimated Volume': { en: 'Estimated Volume', kn: 'ಅಂದಾಜು ಪ್ರಮಾಣ' },
+  'Crime Hotspots': { en: 'Crime Hotspots', kn: 'ಅಪರಾಧ ಹಾಟ್ಸ್ಪಾಟ್ಗಳು' },
+  'Location': { en: 'Location', kn: 'ಸ್ಥಳ' },
+  'Count': { en: 'Count', kn: 'ಸಂಖ್ಯೆ' },
+  'Recent Average': { en: 'Recent Average', kn: 'ಇತ್ತೀಚಿನ ಸರಾಸರಿ' },
+  'Prediction Dashboard': { en: 'Prediction Dashboard', kn: 'ಅಪರಾಧ ಮುನ್ಸೂಚನೆ ಡ್ಯಾಶ್ಬೋರ್ಡ್' },
+  'Analytics': { en: 'Analytics', kn: 'ವಿಶ್ಲೇಷಣೆ' },
+  'Summary': { en: 'Summary', kn: 'ಸಾರಾಂಶ' },
+  'Progress': { en: 'Progress', kn: 'ಪ್ರಗತಿ' },
+  'Prediction Confidence': { en: 'Prediction Confidence', kn: 'ಮುನ್ಸೂಚನೆ ವಿಶ್ವಾಸ' },
+  'Query Details': { en: 'Query Details', kn: 'ಪ್ರಶ್ನೆ ವಿವರಗಳು' },
+  'Intent': { en: 'Intent', kn: 'ಉದ್ದೇಶ' },
+  'Filters': { en: 'Filters', kn: 'ಶೋಧಕಗಳು' },
+  'Records': { en: 'Records', kn: 'ದಾಖಲೆಗಳು' },
+  'Execution': { en: 'Execution', kn: 'ಕಾರ್ಯಗತಗೊಳಿಸುವಿಕೆ' },
+  'Status': { en: 'Status', kn: 'ಸ್ಥಿತಿ' },
+  'Source': { en: 'Source', kn: 'ಮೂಲ' },
+  'Data Source': { en: 'Data Source', kn: 'ಮಾಹಿತಿ ಮೂಲ' },
+
+  // Empty States
+  'No cases matched database query filters.': { en: 'No cases matched database query filters.', kn: 'ಈ ಹುಡುಕಾಟಕ್ಕೆ ಹೊಂದುವ ಯಾವುದೇ ಪ್ರಕರಣಗಳು ಕಂಡುಬಂದಿಲ್ಲ.' },
+  'No accused matches found.': { en: 'No accused matches found.', kn: 'ಹೊಂದುವ ಆರೋಪಿಗಳು ಕಂಡುಬಂದಿಲ್ಲ.' },
+  'No hotspot data.': { en: 'No hotspot data.', kn: 'ಹಾಟ್ಸ್ಪಾಟ್ ಮಾಹಿತಿ ಲಭ್ಯವಿಲ್ಲ.' },
+  'No specific operational findings were generated.': { en: 'No specific operational findings were generated.', kn: 'ಯಾವುದೇ ನಿರ್ದಿಷ್ಟ ಕಾರ್ಯಾಚರಣೆಯ ಸಂಶೋಧನೆಗಳು ರಚನೆಯಾಗಿಲ್ಲ.' },
+  'No specific recommendations generated.': { en: 'No specific recommendations generated.', kn: 'ಯಾವುದೇ ನಿರ್ದಿಷ್ಟ ಶಿಫಾರಸುಗಳನ್ನು ರಚಿಸಲಾಗಿಲ್ಲ.' },
+  'No active investigation workflows were executed during this session. The assistant was primarily engaged in general dialogue.': { en: 'No active investigation workflows were executed during this session. The assistant was primarily engaged in general dialogue.', kn: 'ಈ ಅಧಿವೇಶನದಲ್ಲಿ ಯಾವುದೇ ಸಕ್ರಿಯ ತನಿಖಾ ಕಾರ್ಯಗಳು ನಡೆದಿಲ್ಲ. ಸಹಾಯಕವು ಪ್ರಮುಖವಾಗಿ ಸಾಮಾನ್ಯ ಸಂವಾದದಲ್ಲಿ ತೊಡಗಿತ್ತು.' },
+
+  // Validation Errors
+  'Query Length Limit Exceeded': { en: 'Query Length Limit Exceeded', kn: 'ಪ್ರಶ್ನೆಯ ಉದ್ದ ಗರಿಷ್ಠ ಮಿತಿಯನ್ನು ಮೀರಿದೆ.' },
+  'No FIR Found': { en: 'No FIR Found', kn: 'FIR ದಾಖಲೆ ಕಂಡುಬಂದಿಲ್ಲ.' },
+  'Invalid Query': { en: 'Invalid Query', kn: 'ಅಮಾನ್ಯ ಪ್ರಶ್ನೆ.' },
+  'Backend Error': { en: 'Backend Error', kn: 'ಸರ್ವರ್ ದೋಷ ಸಂಭವಿಸಿದೆ.' },
+  'Unable to translate the query. Please try again.': { en: 'Unable to translate the query. Please try again.', kn: 'ಪ್ರಶ್ನೆಯನ್ನು ಭಾಷಾಂತರಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.' },
+  'Unable to connect to the investigation portal. Ensure backend is running.': { en: 'Unable to connect to the investigation portal. Ensure backend is running.', kn: 'ತನಿಖಾ ಪೋರ್ಟಲ್ ಸಂಪರ್ಕಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ. ಸರ್ವರ್ ಚಾಲನೆಯಲ್ಲಿದೆ ಎಂದು ಖಚಿತಪಡಿಸಿಕೊಳ್ಳಿ.' },
+  '⚠️ Search portal error. Review failure metrics below.': { en: '⚠️ Search portal error. Review failure metrics below.', kn: '⚠️ ಹುಡುಕಾಟ ಪೋರ್ಟಲ್ ದೋಷ. ದೋಷದ ಮೆಟ್ರಿಕ್‌ಗಳನ್ನು ಕೆಳಗೆ ಪರಿಶೀಲಿಸಿ.' },
+
+  // PDF Export specific
+  'OFFICIAL INTELLIGENCE REPORT': { en: 'OFFICIAL INTELLIGENCE REPORT', kn: 'ಅಧಿಕೃತ ಗುಪ್ತಚರ ವರದಿ' },
+  'REPORT METADATA': { en: 'REPORT METADATA', kn: 'ವರದಿ ಮೆಟಾಡೇಟಾ' },
+  'INTERNAL USE ONLY': { en: 'INTERNAL USE ONLY', kn: 'ಆಂತರಿಕ ಬಳಕೆಗೆ ಮಾತ್ರ' },
+  'Generated by KSP Sentinel AI': { en: 'Generated by KSP Sentinel AI', kn: 'ಕೆಎಸ್ಪಿ ಸೆಂಟಿನೆಲ್ ಎಐ ನಿಂದ ರಚಿಸಲಾಗಿದೆ' },
+  'Internal Intelligence Report - CONFIDENTIAL': { en: 'Internal Intelligence Report - CONFIDENTIAL', kn: 'ಆಂತರಿಕ ಗುಪ್ತಚರ ವರದಿ - ಗೌಪ್ಯ' },
+  'Page': { en: 'Page', kn: 'ಪುಟ' },
+  'of': { en: 'of', kn: 'ರ' },
+  'FINDING': { en: 'FINDING', kn: 'ಸಂಶೋಧನೆ' },
+  
+  // Risk & Status Badges
+  'HIGH': { en: 'HIGH', kn: 'ಹೆಚ್ಚು' },
+  'MEDIUM': { en: 'MEDIUM', kn: 'ಮಧ್ಯಮ' },
+  'LOW': { en: 'LOW', kn: 'ಕಡಿಮೆ' },
+  'CRITICAL': { en: 'CRITICAL', kn: 'ಗಂಭೀರ' },
+  'UNKNOWN': { en: 'UNKNOWN', kn: 'ತಿಳಿದಿಲ್ಲ' },
+  'Success': { en: 'Success', kn: 'ಯಶಸ್ಸು' },
+  'Failed': { en: 'Failed', kn: 'ವಿಫಲ' },
+  'None': { en: 'None', kn: 'ಯಾವುದೂ ಇಲ್ಲ' },
+
+  // Miscellaneous
+  'Activate Demo': { en: 'Activate Demo', kn: 'ಡೆಮೊ ಸಕ್ರಿಯಗೊಳಿಸಿ' },
+  'Demo Active': { en: 'Demo Active', kn: 'ಡೆಮೊ ಸಕ್ರಿಯವಾಗಿದೆ' },
+  'Start Demo Session': { en: 'Start Demo Session', kn: 'ಡೆಮೊ ಅಧಿವೇಶನ ಪ್ರಾರಂಭಿಸಿ' },
+  'Export Report': { en: 'Export Report', kn: 'ವರದಿ ರಫ್ತು ಮಾಡಿ' },
+  'Judge Assistant Mode': { en: 'Judge Assistant Mode', kn: 'ನ್ಯಾಯಾಧೀಶರ ಸಹಾಯ ವ್ಯವಸ್ಥೆ' },
+  'Exporting PDF...': { en: 'Exporting PDF...', kn: 'PDF ರಫ್ತು ಮಾಡಲಾಗುತ್ತಿದೆ...' },
+  'Kannada Detected': { en: 'Kannada Detected', kn: 'ಕನ್ನಡ ಪತ್ತೆಯಾಗಿದೆ' },
+  'System boot successful. KSP Sentinel AI Core initialized. Access clearance verified. I have indexed 5 active FIR files, 4 high-risk accused profiles, and real-time cellular towers. Ask about any FIR, accused profile, location, or cross-case correlation.': {
+    en: 'System boot successful. KSP Sentinel AI Core initialized. Access clearance verified. I have indexed 5 active FIR files, 4 high-risk accused profiles, and real-time cellular towers. Ask about any FIR, accused profile, location, or cross-case correlation.',
+    kn: 'ಸಿಸ್ಟಮ್ ಬೂಟ್ ಯಶಸ್ವಿಯಾಗಿದೆ. ಕೆಎಸ್ಪಿ ಸೆಂಟಿನೆಲ್ ಎಐ ಕೋರ್ ಪ್ರಾರಂಭಿಸಲಾಗಿದೆ. ಪ್ರವೇಶ ಅನುಮತಿಯನ್ನು ಪರಿಶೀಲಿಸಲಾಗಿದೆ. ನಾನು ೫ ಸಕ್ರಿಯ ಎಫ್‌ಐಆರ್ ಫೈಲ್‌ಗಳು, ೪ ಹೆಚ್ಚು ಅಪಾಯಕಾರಿ ಆರೋಪಿಗಳ ಪ್ರೊಫೈಲ್‌ಗಳು ಮತ್ತು ನೈಜ-ಸಮಯದ ಮೊಬೈಲ್ ಟವರ್‌ಗಳನ್ನು ಸೂಚ್ಯಂಕ ಮಾಡಿದ್ದೇನೆ. ಯಾವುದೇ ಎಫ್‌ಐಆರ್, ಆರೋಪಿ ಪ್ರೊಫೈಲ್, ಸ್ಥಳ ಅಥವಾ ಪ್ರಕರಣಗಳ ಸಂಬಂಧದ ಬಗ್ಗೆ ಕೇಳಿ.'
+  }
+};
+
+export const t = (key: string, lang: 'en' | 'kn'): string => {
+  if (!dictionary[key as keyof typeof dictionary]) {
+    return key;
+  }
+  return dictionary[key as keyof typeof dictionary][lang] || key;
+};

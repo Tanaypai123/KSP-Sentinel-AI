@@ -8,7 +8,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 30000, // 30 s — prediction queries can be slow
 });
 
 // Request interceptor – can be expanded for auth tokens or loading flags

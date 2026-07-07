@@ -1,5 +1,6 @@
-import { FileText, Calendar, Eye, Activity, Bell } from 'lucide-react';
-import { mockFIRs, mockAlerts, mockCourtHearings } from '../mockData';
+import { MoreHorizontal, FileText, GitMerge, FileQuestion } from 'lucide-react';
+import { memo } from 'react';
+import { mockFIRs } from '../mockData';
 import type { FIR } from '../types';
 
 interface BottomSectionProps {
@@ -7,19 +8,8 @@ interface BottomSectionProps {
   onSelectSearch: (query: string) => void;
 }
 
-export default function BottomSection({ onSelectFIR, onSelectSearch }: BottomSectionProps) {
-  const getSeverityBadge = (severity: string) => {
-    switch (severity) {
-      case 'Critical':
-        return 'text-rose-400 bg-rose-500/10 border border-rose-500/20';
-      case 'High':
-        return 'text-amber-400 bg-amber-500/10 border border-amber-500/20';
-      case 'Medium':
-        return 'text-blue-400 bg-blue-500/10 border border-blue-500/20';
-      default:
-        return 'text-neutral-400 bg-neutral-500/10 border border-neutral-500/20';
-    }
-  };
+const BottomSection = memo(function BottomSection({ onSelectFIR }: BottomSectionProps) {
+  const filteredData = mockFIRs;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -33,69 +23,84 @@ export default function BottomSection({ onSelectFIR, onSelectSearch }: BottomSec
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Recent FIR Table - Span 2 */}
-      <div className="glass-panel rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4 lg:col-span-2 overflow-hidden flex flex-col justify-between">
-        <div className="flex items-center justify-between pb-3 border-b border-neutral-900">
-          <div className="flex items-center space-x-2">
-            <FileText className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-mono font-bold tracking-wider text-white uppercase">
+    <>
+      <div className="premium-card p-4 overflow-hidden flex flex-col justify-between break-inside-avoid mb-6">
+        <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80">
+          <div className="flex items-center space-x-3">
+            <FileText className="w-5 h-5 text-cyan-400" />
+            <span className="text-sm font-sans font-semibold tracking-wide text-white">
               Recent First Information Reports (FIR)
             </span>
           </div>
-          <span className="text-[10px] font-mono text-neutral-500 uppercase">
+          <span className="text-xs font-mono text-neutral-500 uppercase">
             LIVE SYNC • ACTIVE DISTRICT
           </span>
         </div>
 
-        {/* Scrollable table container */}
-        <div className="overflow-x-auto mt-4">
-          <table className="w-full text-left text-xs font-sans">
-            <thead>
-              <tr className="border-b border-neutral-900 text-neutral-500 font-mono uppercase text-[10px] tracking-wider">
-                <th className="py-2.5 px-3">FIR ID</th>
-                <th className="py-2.5 px-3">Classification</th>
-                <th className="py-2.5 px-3">Location</th>
-                <th className="py-2.5 px-3">Severity</th>
-                <th className="py-2.5 px-3">Status</th>
-                <th className="py-2.5 px-3 text-right">Actions</th>
+        <div className="overflow-x-auto mt-4 overflow-y-auto max-h-[350px]">
+          <table className="w-full text-left text-[13px] font-sans">
+            <thead className="sticky top-0 bg-[#0c0c0e]/90 backdrop-blur z-10">
+              <tr className="border-b border-neutral-800/80 text-neutral-500 font-sans font-medium text-[11px] uppercase tracking-widest">
+                <th className="py-3.5 px-4 font-semibold">FIR ID</th>
+                <th className="py-3.5 px-4 font-semibold">Date</th>
+                <th className="py-3.5 px-4 font-semibold">Subject</th>
+                <th className="py-3.5 px-4 font-semibold">Status</th>
+                <th className="py-3.5 px-4 font-semibold">District</th>
+                <th className="py-3.5 px-4 font-semibold">Officer</th>
+                <th className="py-3.5 px-4 text-right font-semibold">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-900">
-              {mockFIRs.map((fir) => (
-                <tr
-                  key={fir.id}
-                  className="hover:bg-neutral-900/40 transition group"
-                >
-                  <td className="py-3 px-3 font-mono font-bold text-neutral-300 group-hover:text-cyan-400 transition-colors">
-                    {fir.caseNumber}
-                  </td>
-                  <td className="py-3 px-3">
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-neutral-200">{fir.title}</span>
-                      <span className="text-[10px] font-mono text-neutral-500 mt-0.5">{fir.underSection}</span>
+            <tbody className="divide-y divide-neutral-800/40 relative">
+              {filteredData.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center">
+                    <div className="flex flex-col items-center justify-center text-neutral-500">
+                      <FileQuestion className="w-8 h-8 mb-3 opacity-50" />
+                      <span className="text-[13px] font-sans">No matching reports found</span>
+                      <span className="text-[10px] font-mono mt-1 opacity-70">Adjust filters to see results</span>
                     </div>
                   </td>
-                  <td className="py-3 px-3 text-neutral-450 text-[11px]">
-                    {fir.location}
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${getSeverityBadge(fir.severity)}`}>
-                      {fir.severity}
+                </tr>
+              )}
+              {filteredData.map((fir) => (
+                <tr 
+                  key={fir.id}
+                  onClick={() => onSelectFIR(fir)}
+                  className="group hover:bg-neutral-800/30 transition-colors duration-200 cursor-pointer"
+                >
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-medium ${getStatusBadge(fir.status)}`}>
+                      {fir.status.toUpperCase()}
                     </span>
                   </td>
-                  <td className="py-3 px-3">
-                    <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full ${getStatusBadge(fir.status)}`}>
-                      {fir.status}
-                    </span>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[11.5px] font-mono text-neutral-400 group-hover:text-neutral-300 transition-colors">{fir.dateRegistered}</span>
+                    </div>
                   </td>
-                  <td className="py-3 px-3 text-right">
-                    <button
-                      onClick={() => onSelectFIR(fir)}
-                      className="inline-flex items-center space-x-1 px-2.5 py-1 border border-neutral-800 bg-neutral-900 text-[10px] font-mono text-neutral-400 hover:text-cyan-400 hover:border-cyan-500/30 rounded transition cursor-pointer"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>DOSSIER</span>
+                  <td className="px-4 py-3">
+                    <span className="text-[13px] text-neutral-300 group-hover:text-white transition-colors line-clamp-1">{fir.title}</span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center space-x-2 text-neutral-400 group-hover:text-neutral-300 transition-colors">
+                      <span className="text-[11px] uppercase tracking-wide">{fir.location}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 opacity-80"></span>
+                      <span className="text-[11.5px] font-mono text-neutral-300">{fir.officersAssigned[0]}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-right">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                      <span className="text-[11px] font-mono text-neutral-300">{fir.officersAssigned[0]}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                    <button className="p-1.5 rounded bg-transparent hover:bg-neutral-800 text-neutral-500 hover:text-white transition-colors">
+                      <MoreHorizontal className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
@@ -105,93 +110,61 @@ export default function BottomSection({ onSelectFIR, onSelectSearch }: BottomSec
         </div>
       </div>
 
-      {/* Right Column containing both Latest Alerts and Upcoming Court Hearings */}
-      <div className="space-y-6 lg:col-span-1 flex flex-col">
-        {/* Latest Alerts */}
-        <div className="glass-panel rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4 flex-1 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-neutral-900">
-            <div className="flex items-center space-x-2">
-              <Bell className="w-4 h-4 text-cyan-400 animate-pulse" />
-              <span className="text-xs font-mono font-bold tracking-wider text-white uppercase">
-                Active Tactical Alerts
+      <div className="flex flex-col h-full break-inside-avoid mb-6">
+        {/* Investigation Timeline */}
+        <div className="premium-card p-4 flex-1 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-neutral-800/80">
+            <div className="flex items-center space-x-3">
+              <GitMerge className="w-[18px] h-[18px] text-indigo-400" />
+              <span className="text-[13px] font-sans font-semibold tracking-wide text-white">
+                Investigation Timeline
               </span>
             </div>
-            <Activity className="w-3.5 h-3.5 text-neutral-600" />
-          </div>
-
-          <div className="space-y-2.5">
-            {mockAlerts.map((alert) => (
-              <div
-                key={alert.id}
-                onClick={() => onSelectSearch(alert.text)}
-                className="flex items-start p-2.5 rounded-lg border border-neutral-900 bg-neutral-950/40 hover:bg-neutral-900/60 transition cursor-pointer"
-              >
-                <span className={`flex h-2 w-2 relative mt-1.5 mr-2.5 flex-shrink-0`}>
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    alert.type === 'CRITICAL' ? 'bg-rose-400' :
-                    alert.type === 'WARNING' ? 'bg-amber-400' :
-                    'bg-cyan-400'
-                  }`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                    alert.type === 'CRITICAL' ? 'bg-rose-500' :
-                    alert.type === 'WARNING' ? 'bg-amber-500' :
-                    'bg-cyan-500'
-                  }`}></span>
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-neutral-300 leading-normal font-sans">
-                    {alert.text}
-                  </p>
-                  <div className="flex items-center justify-between mt-1 text-[9px] font-mono text-neutral-500">
-                    <span>{alert.timestamp}</span>
-                    {alert.location && <span>TARGET APEX: {alert.location}</span>}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Upcoming Court Hearings */}
-        <div className="glass-panel rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4 space-y-3">
-          <div className="flex items-center space-x-2 pb-2 border-b border-neutral-900">
-            <Calendar className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-mono font-bold tracking-wider text-white uppercase">
-              UPCOMING DOCKETS
+            <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-mono px-2 py-0.5 rounded uppercase">
+              Rajesh Gowda Syndicate
             </span>
           </div>
 
-          <div className="space-y-2">
-            {mockCourtHearings.map((hearing) => (
-              <div
-                key={hearing.id}
-                onClick={() => onSelectSearch(hearing.accusedName)}
-                className="p-2.5 rounded-lg border border-neutral-900 bg-neutral-950/40 hover:bg-neutral-900/60 transition cursor-pointer"
-              >
-                <div className="flex items-center justify-between text-[10px] font-mono mb-1">
-                  <span className="text-cyan-400 font-bold">{hearing.caseNumber}</span>
-                  <span className={`px-1.5 py-0.5 rounded text-[8px] ${
-                    hearing.status === 'Scheduled' ? 'bg-indigo-950 text-indigo-400 border border-indigo-900' :
-                    hearing.status === 'Completed' ? 'bg-emerald-950/30 text-emerald-400 border border-emerald-900/30' :
-                    'bg-neutral-900 text-neutral-400'
-                  }`}>
-                    {hearing.status}
-                  </span>
-                </div>
-                <div className="text-xs font-bold text-neutral-200">
-                  {hearing.accusedName}
-                </div>
-                <div className="text-[10px] text-neutral-450 mt-1 font-sans">
-                  {hearing.courtName}
-                </div>
-                <div className="text-[9px] font-mono text-neutral-500 mt-0.5">
-                  {hearing.hearingDate}
-                </div>
+          <div className="relative pl-3 space-y-5 pt-2 border-l border-neutral-800/60 ml-2">
+            
+            <div className="relative">
+              <div className="absolute -left-[17px] top-1 w-2.5 h-2.5 rounded-full bg-indigo-500 ring-4 ring-[#0c0c0e]" />
+              <div className="pl-4">
+                <span className="text-[10px] font-mono text-neutral-500">TODAY, 14:30</span>
+                <p className="text-[13px] text-neutral-200 mt-0.5 font-medium leading-snug">Raid initiated at Koramangala hideout.</p>
+                <span className="inline-block mt-1.5 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[9px] font-mono border border-emerald-500/20">IN PROGRESS</span>
               </div>
-            ))}
+            </div>
+
+            <div className="relative">
+              <div className="absolute -left-[17px] top-1 w-2.5 h-2.5 rounded-full bg-neutral-700 ring-4 ring-[#0c0c0e]" />
+              <div className="pl-4">
+                <span className="text-[10px] font-mono text-neutral-500">YESTERDAY, 19:15</span>
+                <p className="text-[13px] text-neutral-300 mt-0.5 leading-snug">Warrant approved by Magistrate.</p>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute -left-[17px] top-1 w-2.5 h-2.5 rounded-full bg-neutral-700 ring-4 ring-[#0c0c0e]" />
+              <div className="pl-4">
+                <span className="text-[10px] font-mono text-neutral-500">YESTERDAY, 09:00</span>
+                <p className="text-[13px] text-neutral-300 mt-0.5 leading-snug">AI identified signature match from 4 cyber extortion FIRs.</p>
+              </div>
+            </div>
+            
+            <div className="relative">
+              <div className="absolute -left-[17px] top-1 w-2.5 h-2.5 rounded-full bg-neutral-700 ring-4 ring-[#0c0c0e]" />
+              <div className="pl-4">
+                <span className="text-[10px] font-mono text-neutral-500">AUG 12, 11:30</span>
+                <p className="text-[13px] text-neutral-400 mt-0.5 leading-snug opacity-80">Initial complaint filed by victim.</p>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
-}
+});
+
+export default BottomSection;

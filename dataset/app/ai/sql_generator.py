@@ -40,67 +40,67 @@ from app.models.masters import District, Unit
 
 def _filter_fir_number(stmt, value):
     """Filter by FIR number (crime_no)."""
-    if not value:
+    if not value or not str(value).strip():
         return stmt
-    return stmt.where(CaseMaster.crime_no.ilike(f"%{value}%"))
+    return stmt.where(CaseMaster.crime_no.ilike(f"%{str(value).strip()}%"))
 
 def _filter_crime_head(stmt, value):
     """Filter by major crime head name."""
-    if not value:
+    if not value or not str(value).strip():
         return stmt
-    return stmt.where(CaseMaster.crime_major_head.has(CrimeHead.crime_group_name.ilike(f"%{value}%")))
+    return stmt.where(CaseMaster.crime_major_head.has(CrimeHead.crime_group_name.ilike(f"%{str(value).strip()}%")))
 
 def _filter_crime_sub_head(stmt, value):
     """Filter by sub‑head name."""
-    if not value:
+    if not value or not str(value).strip():
         return stmt
-    return stmt.where(CaseMaster.crime_minor_head.has(CrimeSubHead.crime_head_name.ilike(f"%{value}%")))
+    return stmt.where(CaseMaster.crime_minor_head.has(CrimeSubHead.crime_head_name.ilike(f"%{str(value).strip()}%")))
 
 def _filter_district(stmt, value):
     """Filter by district name via police station relationship."""
-    if not value:
+    if not value or not str(value).strip():
         return stmt
     return stmt.where(
         CaseMaster.police_station.has(
-            Unit.district.has(District.district_name.ilike(f"%{value}%"))
+            Unit.district.has(District.district_name.ilike(f"%{str(value).strip()}%"))
         )
     )
 
 def _filter_police_station(stmt, value):
     """Filter by police station (unit) name."""
-    if not value:
+    if not value or not str(value).strip():
         return stmt
-    return stmt.where(CaseMaster.police_station.has(Unit.unit_name.ilike(f"%{value}%")))
+    return stmt.where(CaseMaster.police_station.has(Unit.unit_name.ilike(f"%{str(value).strip()}%")))
 
 def _filter_accused_name(stmt, value):
     """Filter accused by name."""
-    if not value:
+    if not value or not str(value).strip():
         return stmt
-    return stmt.where(Accused.accused_name.ilike(f"%{value}%"))
+    return stmt.where(Accused.accused_name.ilike(f"%{str(value).strip()}%"))
 
 def _filter_victim_name(stmt, value):
     """Filter victim by name."""
-    if not value:
+    if not value or not str(value).strip():
         return stmt
-    return stmt.where(Victim.victim_name.ilike(f"%{value}%"))
+    return stmt.where(Victim.victim_name.ilike(f"%{str(value).strip()}%"))
 
 def _filter_complainant_name(stmt, value):
     """Filter complainant by name."""
-    if not value:
+    if not value or not str(value).strip():
         return stmt
-    return stmt.where(ComplainantDetails.complainant_name.ilike(f"%{value}%"))
+    return stmt.where(ComplainantDetails.complainant_name.ilike(f"%{str(value).strip()}%"))
 
 def _filter_section(stmt, value):
     """Filter by legal section name."""
-    if not value:
+    if not value or not str(value).strip():
         return stmt
-    return stmt.where(ActSectionAssociation.section_code.ilike(f"%{value}%"))
+    return stmt.where(ActSectionAssociation.section_code.ilike(f"%{str(value).strip()}%"))
 
 def _filter_act(stmt, value):
     """Filter by act name."""
-    if not value:
+    if not value or not str(value).strip():
         return stmt
-    return stmt.where(ActSectionAssociation.act_code.ilike(f"%{value}%"))
+    return stmt.where(ActSectionAssociation.act_code.ilike(f"%{str(value).strip()}%"))
 
 def _filter_date_range(stmt, value):
     """Filter by a start,end date range string "YYYY-MM-DD,YYYY-MM-DD"."""
@@ -343,24 +343,34 @@ def generate_select(parsed_query: Dict[str, Any]):
 
     if intent == "CRIME_TREND":
         stmt = (
-            select(CaseMaster.crime_major_head_id, func.count().label("count"))
-            .group_by(CaseMaster.crime_major_head_id)
+            select(
+                CrimeHead.crime_group_name.label("crime_group_name"),
+                func.count(CaseMaster.case_master_id).label("count")
+            )
+            .join(CrimeHead, CaseMaster.crime_major_head_id == CrimeHead.crime_head_id)
+            .group_by(CrimeHead.crime_group_name)
         )
         stmt = _apply_entity_filters(stmt, entities)
         # Apply optional pagination (limit/offset) after ordering by count descending.
-        stmt = stmt.order_by(func.count().desc())
+        stmt = stmt.order_by(func.count(CaseMaster.case_master_id).desc())
         stmt = _apply_sort_and_pagination(stmt, entities, intent)
         return stmt
 
     if intent == "HOTSPOT":
         stmt = (
-            select(CaseMaster.latitude, CaseMaster.longitude, func.count().label("count"))
+            select(
+                CaseMaster.latitude,
+                CaseMaster.longitude,
+                Unit.unit_name.label("location"),
+                func.count(CaseMaster.case_master_id).label("count")
+            )
+            .join(Unit, CaseMaster.police_station_id == Unit.unit_id, isouter=True)
             .where(CaseMaster.latitude != None)
-            .group_by(CaseMaster.latitude, CaseMaster.longitude)
+            .group_by(CaseMaster.latitude, CaseMaster.longitude, Unit.unit_name)
         )
         stmt = _apply_entity_filters(stmt, entities)
         # Order by hotspot count descending and apply pagination.
-        stmt = stmt.order_by(func.count().desc())
+        stmt = stmt.order_by(func.count(CaseMaster.case_master_id).desc())
         stmt = _apply_sort_and_pagination(stmt, entities, intent)
         return stmt
 
