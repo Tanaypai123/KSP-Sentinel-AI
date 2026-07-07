@@ -6,7 +6,6 @@ import {
   Sparkles,
   RefreshCw,
   Paperclip,
-  FileCode,
   TrendingUp,
   TrendingDown,
   Minus,
@@ -19,21 +18,28 @@ import {
   Shield,
   Clock,
   Compass,
-  Copy,
-  Check,
   Download,
   Database,
   Search,
   Activity,
-  Flame,
   Mic,
   MicOff,
   Maximize,
-  Minimize
+  Minimize,
+  FileText,
+  User,
+  ChevronDown,
+  ChevronUp,
+  CheckCheck,
+  Calendar,
+  Filter,
+  Info,
+  X
 } from 'lucide-react';
 import type { Message, BackendResponse, PredictionResult } from '../types';
 import { sendChatMessage } from '../services/chatService';
 import { t } from '../services/i18n';
+import { ErrorBoundary } from './ErrorBoundary';
 
 // ---------------------------------------------------------------------------
 // Language Context
@@ -62,17 +68,20 @@ interface StreamedTextProps {
 
 export function StreamedText({ text, speed = 8, onComplete, onUpdate }: StreamedTextProps) {
   const [displayedText, setDisplayedText] = useState('');
+  
+  // Defensively ensure text is a string
+  const safeText = typeof text === 'string' ? text : (text ? JSON.stringify(text) : '');
 
   useEffect(() => {
     let index = 0;
     let rafId: number;
     const interval = setInterval(() => {
-      setDisplayedText((prev) => prev + text.charAt(index));
+      setDisplayedText((prev) => prev + safeText.charAt(index));
       index++;
       rafId = requestAnimationFrame(() => {
         onUpdate?.();
       });
-      if (index >= text.length) {
+      if (index >= safeText.length) {
         clearInterval(interval);
         cancelAnimationFrame(rafId);
         onComplete?.();
@@ -83,7 +92,7 @@ export function StreamedText({ text, speed = 8, onComplete, onUpdate }: Streamed
       clearInterval(interval);
       cancelAnimationFrame(rafId);
     };
-  }, [text, speed, onComplete, onUpdate]);
+  }, [safeText, speed, onComplete, onUpdate]);
 
   return <span className="font-sans text-sm md:text-base leading-relaxed text-neutral-250">{displayedText}</span>;
 }
@@ -123,7 +132,7 @@ function SequencedStatusLoader({ stage = 0 }: { stage?: number }) {
 // ---------------------------------------------------------------------------
 // 1. CasesTable (SEARCH_CASES / SEARCH_VICTIMS) with Pagination & Sorting
 // ---------------------------------------------------------------------------
-function CasesTableRaw({ results }: { results: Record<string, any>[] }) {
+function CasesTableRaw({ records }: { records: Record<string, any>[] }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState('crime_registered_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -132,7 +141,7 @@ function CasesTableRaw({ results }: { results: Record<string, any>[] }) {
   const pageSize = 5;
 
   const lang = useContext(LangContext);
-  if (!results || results.length === 0) {
+  if (!Array.isArray(records) || records.length === 0) {
     return (
       <div className="p-8 text-center border border-neutral-800 rounded-xl bg-neutral-950/40">
         <Database className="w-8 h-8 text-neutral-500 mx-auto mb-2" />
@@ -149,9 +158,9 @@ function CasesTableRaw({ results }: { results: Record<string, any>[] }) {
     4: 'Under Review',
   };
 
-  const filtered = results.filter((r) => {
+  const filtered = records.filter((r) => {
     if (filterStatus === 'ALL') return true;
-    const label = statusLabels[r.status] || 'Unknown';
+    const label = statusLabels[r?.status] || 'Unknown';
     return label === filterStatus;
   });
 
@@ -198,14 +207,14 @@ function CasesTableRaw({ results }: { results: Record<string, any>[] }) {
   };
 
   const exportCSV = () => {
-    if (!results || results.length === 0) return;
+    if (!Array.isArray(records) || records.length === 0) return;
     const headers = ['CrimeNo', 'CaseNo', 'RegisteredDate', 'Status', 'Facts'];
-    const rows = results.map((r) => [
-      r.crime_no || '',
-      r.case_no || '',
-      r.crime_registered_date || '',
-      statusLabels[r.status] || 'Unknown',
-      (r.brief_facts || '').replace(/"/g, '""'),
+    const rows = records.map((r) => [
+      r?.crime_no || '',
+      r?.case_no || '',
+      r?.crime_registered_date || '',
+      statusLabels[r?.status] || 'Unknown',
+      (r?.brief_facts || '').replace(/"/g, '""'),
     ]);
     const csvContent =
       [headers.join(','), ...rows.map((e) => e.map((x) => `"${x}"`).join(','))].join('\n');
@@ -365,7 +374,199 @@ function CasesTableRaw({ results }: { results: Record<string, any>[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. AggregateCard (Numerical aggregated dashboard display)
+// 2. FIRLookupDossierRaw (Palantir-style specific FIR dashboard)
+// ---------------------------------------------------------------------------
+function FIRLookupDossierRaw({ records, onQueryAction }: { records: Record<string, any>[]; onQueryAction?: (q: string) => void }) {
+  const [expandedFacts, setExpandedFacts] = useState(false);
+  const lang = useContext(LangContext);
+  
+  if (!Array.isArray(records) || records.length === 0) {
+    return (
+      <div className="p-8 text-center border border-neutral-800 rounded-xl bg-neutral-950/40">
+        <FileText className="w-8 h-8 text-neutral-500 mx-auto mb-2" />
+        <p className="text-sm text-neutral-450 font-mono">{t('FIR not found or records empty.', lang)}</p>
+      </div>
+    );
+  }
+
+  const fir = records[0];
+  const summaryText = `FIR ${fir?.crime_no || 'Unknown'} was registered on ${fir?.crime_registered_date || 'an unknown date'} at ${fir?.police_station_name || 'an unknown station'}. The case is currently classified as ${fir?.crime_group_name || 'an unknown category'} and status is ${fir?.status_name || 'Not Available'}.`;
+
+  const statusStr = (fir?.status_name || fir?.status || 'Not Available').toString().toUpperCase();
+  let statusBadge = 'bg-neutral-800 text-neutral-400 border-neutral-700';
+  if (statusStr.includes('OPEN') || statusStr.includes('INVESTIGATION')) statusBadge = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+  if (statusStr.includes('CLOSED')) statusBadge = 'bg-emerald-500/10 text-emerald-450 border-emerald-500/20';
+  if (statusStr.includes('PENDING') || statusStr.includes('REVIEW')) statusBadge = 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+  if (statusStr.includes('CHARGE SHEET')) statusBadge = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+
+  const formatVal = (v: any) => v && v !== 'null' && v !== 'Unknown' && v !== 'undefined' ? String(v) : 'Not Available';
+
+  // Extract Mock Victims & Accused safely (simulate if array exists, else empty)
+  // The backend might return victims or accused inside the FIR object if it's a deep lookup.
+  const victims = Array.isArray(fir?.victims) ? fir.victims : [];
+  const accused = Array.isArray(fir?.accused) ? fir.accused : [];
+
+  return (
+    <div className="space-y-4 font-sans animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+      {/* AI Summary Banner */}
+      <div className="p-4 rounded-xl border border-cyan-500/20 bg-gradient-to-r from-cyan-950/20 to-neutral-900/60 shadow-[0_0_15px_rgba(6,182,212,0.05)] flex items-start space-x-3">
+        <Sparkles className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5 animate-pulse" />
+        <div>
+          <span className="block text-[10px] font-mono text-cyan-500 uppercase tracking-wider font-bold mb-1">Intelligence Summary</span>
+          <p className="text-sm text-neutral-200 leading-relaxed">{summaryText}</p>
+        </div>
+      </div>
+
+      {/* Core FIR Information */}
+      <div className="rounded-xl border border-neutral-800 bg-neutral-950 overflow-hidden shadow-lg">
+        <div className="bg-neutral-900/60 px-4 py-3 border-b border-neutral-800 flex items-center space-x-2">
+          <Shield className="w-4 h-4 text-neutral-400" />
+          <span className="text-xs font-mono font-bold text-neutral-300 uppercase tracking-wider">FIR Information</span>
+        </div>
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6 text-sm">
+          <div>
+            <span className="block text-[10px] font-mono text-neutral-500 uppercase">FIR Number</span>
+            <span className="font-mono font-bold text-white">{formatVal(fir?.crime_no)}</span>
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-neutral-500 uppercase">Case Number</span>
+            <span className="font-mono text-neutral-300">{formatVal(fir?.case_no)}</span>
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-neutral-500 uppercase">Crime Type</span>
+            <span className="text-rose-400 font-bold">{formatVal(fir?.crime_group_name)}</span>
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-neutral-500 uppercase">Registration Date</span>
+            <span className="text-neutral-300">{formatVal(fir?.crime_registered_date)}</span>
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-neutral-500 uppercase">Case Status</span>
+            <span className={`inline-block mt-0.5 text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${statusBadge}`}>
+              {statusStr}
+            </span>
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-neutral-500 uppercase">Police Station</span>
+            <span className="text-neutral-300">{formatVal(fir?.police_station_name)}</span>
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-neutral-500 uppercase">District</span>
+            <span className="text-neutral-300">{formatVal(fir?.district_name)}</span>
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-neutral-500 uppercase">Investigating Officer</span>
+            <span className="text-neutral-300">{formatVal(fir?.io_name)}</span>
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-neutral-500 uppercase">Coordinates</span>
+            <span className="font-mono text-neutral-400 text-xs">
+              Lat: {formatVal(fir?.latitude)}, Lng: {formatVal(fir?.longitude)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid for Accused & Victims */}
+      {(accused.length > 0 || victims.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {accused.length > 0 && (
+            <div className="rounded-xl border border-neutral-800 bg-neutral-950 overflow-hidden shadow-lg">
+              <div className="bg-neutral-900/60 px-4 py-3 border-b border-neutral-800 flex items-center space-x-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500" />
+                <span className="text-xs font-mono font-bold text-neutral-300 uppercase tracking-wider">Accused ({accused.length})</span>
+              </div>
+              <div className="p-3 space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                {accused.map((a: any, i: number) => (
+                  <div key={i} className="flex items-center space-x-3 p-2 rounded-lg bg-neutral-900/40 border border-neutral-800/50">
+                    <div className="w-10 h-10 rounded bg-neutral-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+                       <img src={a?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(formatVal(a?.name))}&background=random`} alt="Accused" className="w-full h-full object-cover opacity-80" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-neutral-200 truncate">{formatVal(a?.name)}</div>
+                      <div className="text-[10px] font-mono text-neutral-500">
+                        {formatVal(a?.age)} yrs • {formatVal(a?.gender)}
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded border border-rose-500/20 bg-rose-500/10 text-rose-400 uppercase tracking-wider whitespace-nowrap">
+                      {formatVal(a?.status)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {victims.length > 0 && (
+            <div className="rounded-xl border border-neutral-800 bg-neutral-950 overflow-hidden shadow-lg">
+              <div className="bg-neutral-900/60 px-4 py-3 border-b border-neutral-800 flex items-center space-x-2">
+                <User className="w-4 h-4 text-emerald-500" />
+                <span className="text-xs font-mono font-bold text-neutral-300 uppercase tracking-wider">Victims ({victims.length})</span>
+              </div>
+              <div className="p-3 space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                {victims.map((v: any, i: number) => (
+                  <div key={i} className="flex items-center space-x-3 p-2 rounded-lg bg-neutral-900/40 border border-neutral-800/50">
+                    <div className="w-10 h-10 rounded bg-neutral-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+                       <img src={v?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(formatVal(v?.name))}&background=random`} alt="Victim" className="w-full h-full object-cover opacity-80" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-neutral-200 truncate">{formatVal(v?.name)}</div>
+                      <div className="text-[10px] font-mono text-neutral-500">
+                        {formatVal(v?.age)} yrs • {formatVal(v?.gender)}
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded border border-neutral-700 bg-neutral-800 text-neutral-400 uppercase tracking-wider whitespace-nowrap">
+                      {formatVal(v?.status)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Brief Facts Accordion */}
+      <div className="rounded-xl border border-neutral-800 bg-neutral-950 overflow-hidden shadow-lg">
+        <button 
+          onClick={() => setExpandedFacts(!expandedFacts)}
+          className="w-full bg-neutral-900/60 px-4 py-3 border-b border-neutral-800 flex items-center justify-between cursor-pointer hover:bg-neutral-900/80 transition"
+        >
+          <div className="flex items-center space-x-2">
+            <FileText className="w-4 h-4 text-neutral-400" />
+            <span className="text-xs font-mono font-bold text-neutral-300 uppercase tracking-wider">Statement of Facts</span>
+          </div>
+          {expandedFacts ? <ChevronUp className="w-4 h-4 text-neutral-500" /> : <ChevronDown className="w-4 h-4 text-neutral-500" />}
+        </button>
+        {expandedFacts && (
+          <div className="p-4 bg-neutral-950 text-sm leading-relaxed text-neutral-300 font-sans whitespace-pre-wrap">
+            {fir?.brief_facts && fir.brief_facts !== 'null' && fir.brief_facts !== 'undefined' ? fir.brief_facts : 'No statement of facts available.'}
+          </div>
+        )}
+      </div>
+
+      {/* Recommended Actions */}
+      <div className="pt-2">
+        <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider block mb-2 font-bold">Recommended Actions</span>
+        <div className="flex flex-wrap gap-2">
+          {['Find Related Cases', 'Show Nearby Crimes', 'Analyze Network', 'View Hotspots'].map((action, i) => (
+            <button
+              key={i}
+              onClick={() => onQueryAction?.(action)}
+              className="px-3 py-1.5 rounded-lg border border-cyan-500/20 bg-cyan-950/20 text-cyan-400 hover:bg-cyan-900/40 transition text-xs font-mono cursor-pointer flex items-center space-x-1.5 shadow-[0_0_10px_rgba(6,182,212,0.05)]"
+            >
+              <Search className="w-3 h-3" />
+              <span>{action}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 3. AggregateCard (Numerical aggregated dashboard display)
 // ---------------------------------------------------------------------------
 function AggregateCardRaw({ count, entities }: { count: number; entities: Record<string, any> }) {
   const lang = useContext(LangContext);
@@ -392,10 +593,10 @@ function AggregateCardRaw({ count, entities }: { count: number; entities: Record
 // 3. Upgraded Interactive ChartWrapper with Tooltips, Legends, and Exporter
 // ---------------------------------------------------------------------------
 function CrimeTypeBarChart({ data }: { data: Record<string, any>[] }) {
-  const chartData = data.map((d) => ({
-    label: d.crime_group_name ?? d.crime_group ?? 'Other',
-    value: Number(d.count ?? d.total ?? 0),
-  }));
+  const chartData = Array.isArray(data) ? data.map((d) => ({
+    label: d?.crime_group_name ?? d?.crime_group ?? 'Other',
+    value: Number(d?.count ?? d?.total ?? 0),
+  })) : [];
 
   const max = Math.max(...chartData.map((d) => d.value), 1);
 
@@ -425,15 +626,14 @@ function CrimeTypeBarChart({ data }: { data: Record<string, any>[] }) {
 function TimelineLineChartRaw({ data, isArea = false }: { data: Record<string, any>[]; isArea?: boolean }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  const chartData = data.map((d) => {
+  const chartData = Array.isArray(data) ? data.map((d) => {
     let label = '';
-    if (d.year && d.month) label = `${d.year}-${String(d.month).padStart(2, '0')}`;
-    else label = d.period ?? d.month ?? `${d.year ?? '—'}`;
-    return {
-      label,
-      value: Number(d.count ?? d.total ?? 0),
-    };
-  });
+    if (d?.year && d?.month) label = `${d.year}-${String(d.month).padStart(2, '0')}`;
+    else if (d?.date) label = d.date;
+    else if (d?.label) label = d.label;
+    else label = 'N/A';
+    return { label, value: Number(d?.count ?? d?.total ?? 0) };
+  }) : [];
 
   const max = Math.max(...chartData.map((d) => d.value), 1);
   const width = 500;
@@ -539,10 +739,10 @@ function TimelineLineChartRaw({ data, isArea = false }: { data: Record<string, a
 function DonutPieChartRaw({ data }: { data: Record<string, any>[] }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  const chartData = data.map((d) => ({
-    label: d.crime_group_name ?? d.crime_group ?? 'Other',
-    value: Number(d.count ?? d.total ?? 0),
-  }));
+  const chartData = Array.isArray(data) ? data.map((d) => ({
+    label: d?.crime_group_name ?? d?.crime_group ?? d?.label ?? 'Other',
+    value: Number(d?.count ?? d?.total ?? d?.value ?? 0),
+  })) : [];
 
   const total = chartData.reduce((sum, d) => sum + d.value, 0) || 1;
   const radius = 36;
@@ -977,16 +1177,16 @@ function PredictionCardRaw({ p }: { p: PredictionResult }) {
           <span className="block text-xs font-mono text-neutral-500 uppercase tracking-wide">
             Historical Sparkline
           </span>
-          <div className="flex items-end space-x-1 h-10">
-            {p.historical_counts.slice(-15).map((h, i) => {
-              const max = Math.max(...p.historical_counts.map((x) => x.count), 1);
-              const pct = Math.round((h.count / max) * 100);
+          <div className="flex items-end space-x-1.5 h-10">
+            {Array.isArray(p?.historical_counts) && p.historical_counts.slice(-15).map((h, i) => {
+              const max = Math.max(...p.historical_counts.map((x) => x.count || 0), 1);
+              const height = `${Math.max((h.count / max) * 100, 5)}%`;
               return (
                 <div
                   key={i}
                   title={`${h.year}-${String(h.month).padStart(2, '0')}: ${h.count}`}
                   className="flex-1 rounded bg-cyan-500/25 hover:bg-cyan-400/50 transition cursor-help animate-fadeIn"
-                  style={{ height: `${Math.max(pct, 8)}%` }}
+                  style={{ height }}
                 />
               );
             })}
@@ -1002,7 +1202,7 @@ function RiskBadge({ level }: { level: string }) {
   const colours: Record<string, string> = {
     HIGH: 'bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-[0_0_6px_rgba(244,63,94,0.1)]',
     MEDIUM: 'bg-amber-500/10 text-amber-455 border-amber-500/20 shadow-[0_0_6px_rgba(245,158,11,0.1)]',
-    LOW: 'bg-emerald-500/10 text-emerald-455 border-emerald-500/20 shadow-[0_0_6px_rgba(16,185,129,0.1)]',
+    LOW: 'bg-emerald-500/10 text-emerald-455 border-emerald-500/20 shadow-[0_0_6px_rgba(10,185,129,0.1)]',
     UNKNOWN: 'bg-neutral-800/20 text-neutral-455 border-neutral-700/20',
   };
   return (
@@ -1027,9 +1227,9 @@ function TrendIcon({ trend }: { trend: string }) {
 // ---------------------------------------------------------------------------
 
 
-function AccusedCardGridRaw({ results }: { results: Record<string, any>[] }) {
+function AccusedCardGridRaw({ records }: { records: Record<string, any>[] }) {
   const lang = useContext(LangContext);
-  if (!results || results.length === 0) {
+  if (!Array.isArray(records) || records.length === 0) {
     return (
       <div className="mt-3 p-8 text-center border border-neutral-800 rounded-xl bg-neutral-950/40">
         <Users className="w-8 h-8 text-neutral-600 mx-auto mb-2" />
@@ -1040,15 +1240,15 @@ function AccusedCardGridRaw({ results }: { results: Record<string, any>[] }) {
 
   return (
     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {results.slice(0, 10).map((acc, i) => {
-        const name = acc.name || acc.accused_name || 'Unknown';
-        const photoUrl = acc.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
-        const riskScore = acc.risk_score;
-        const caseCount = acc.cases || 1;
-        const crimeCategory = acc.crime_types || acc.crime_category || 'Unknown';
-        const district = acc.district || acc.district_name || 'Unknown';
-        const policeStation = acc.police_station_name || 'N/A';
-        const status = acc.status_name || 'Unknown';
+      {records.slice(0, 10).map((acc, i) => {
+        const name = acc?.name || acc?.accused_name || 'Unknown';
+        const photoUrl = acc?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+        const riskScore = acc?.risk_score;
+        const caseCount = acc?.cases || 1;
+        const crimeCategory = acc?.crime_types || acc?.crime_category || 'Unknown';
+        const district = acc?.district || acc?.district_name || 'Unknown';
+        const policeStation = acc?.police_station_name || 'N/A';
+        const status = acc?.status_name || 'Unknown';
         
         let riskColor = 'text-green-400 bg-green-500/10 border-green-500/20';
         let riskLabel = 'LOW RISK';
@@ -1114,94 +1314,13 @@ function AccusedCardGridRaw({ results }: { results: Record<string, any>[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// 7. Collapsible Query Explanation Panel (Collapses explainability filters/SQL)
-// ---------------------------------------------------------------------------
-function QueryExplanationBox({ explanation, duration }: { explanation: any; duration: number }) {
-  const lang = useContext(LangContext);
-  const [isOpen, setIsOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const copySQL = () => {
-    if (!explanation.sql_summary) return;
-    navigator.clipboard.writeText(explanation.sql_summary);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="mt-4 rounded-xl border border-neutral-800 bg-neutral-900/20">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full p-4 cursor-pointer hover:bg-neutral-850 transition"
-      >
-        <span className="flex items-center space-x-2 text-xs">
-          <Database className="w-4 h-4 text-purple-400" />
-          <span className="font-semibold text-neutral-300">{t('Query Details', lang)}</span>
-        </span>
-        <span className="text-neutral-500 text-xs hover:underline">
-          {isOpen ? 'Collapse Logs' : 'Expand Logs'}
-        </span>
-      </button>
-      {isOpen && (
-        <div className="p-4 space-y-4 text-xs font-mono text-neutral-400 border-t border-neutral-900 bg-neutral-950/45">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-neutral-550 block mb-0.5">Intent Detected:</span>
-              <span className="text-purple-405 font-bold text-sm">{explanation.intent}</span>
-            </div>
-            <div>
-              <span className="text-neutral-550 block mb-0.5">Execution speed:</span>
-              <span className="text-emerald-455 font-bold text-sm">{duration}ms</span>
-            </div>
-          </div>
-
-          <div>
-            <span className="text-neutral-550 block mb-0.5">Reasoning Log:</span>
-            <span className="text-neutral-300 font-sans text-xs md:text-sm leading-relaxed block">{explanation.reasoning}</span>
-          </div>
-
-          {explanation.filters && explanation.filters.length > 0 && (
-            <div>
-              <span className="text-neutral-550 block mb-1.5">Applied Filters:</span>
-              <div className="flex flex-wrap gap-1.5">
-                {explanation.filters.map((f: string, i: number) => (
-                  <span key={i} className="px-2.5 py-1 rounded bg-neutral-900 border border-neutral-850 text-neutral-300 text-xs font-bold">
-                    {f}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <div className="flex items-center justify-between text-neutral-550 mb-1.5">
-              <span>Generated SQL Statement:</span>
-              <button
-                onClick={copySQL}
-                className="hover:text-white transition flex items-center space-x-1.5 cursor-pointer text-xs border border-neutral-800 px-2.5 py-1 rounded-lg bg-neutral-950 font-bold"
-              >
-                {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                <span>{copied ? 'Copied' : 'Copy SQL'}</span>
-              </button>
-            </div>
-            <pre className="p-4 bg-black text-xs font-mono text-purple-305 overflow-x-auto max-h-40 rounded-lg border border-neutral-900/60 whitespace-pre-wrap leading-relaxed select-all">
-              <code>{explanation.sql_summary}</code>
-            </pre>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // 8. Dynamic Insights Display Card
 // ---------------------------------------------------------------------------
 function InsightsBlock({ insights }: { insights: string[] }) {
   const lang = useContext(LangContext);
   return (
     <div className="mt-4 grid grid-cols-1 gap-2.5">
-      {insights.map((ins, idx) => (
+      {Array.isArray(insights) && insights.map((ins, idx) => (
         <div
           key={idx}
           className="p-4 rounded-xl border border-cyan-500/10 bg-cyan-950/5 flex items-start space-x-3 shadow-[0_2px_10px_rgba(6,182,212,0.02)] hover:bg-cyan-950/10 transition"
@@ -1214,24 +1333,32 @@ function InsightsBlock({ insights }: { insights: string[] }) {
   );
 }
 
+const FIRLookupDossier = memo(FIRLookupDossierRaw);
+
 // ---------------------------------------------------------------------------
 // Main IntentResponseBlock Orchestrator
 // ---------------------------------------------------------------------------
-function IntentResponseBlock({ payload }: { payload: BackendResponse }) {
-  const { intent, count, results, prediction, summary, explanation, insights } = payload;
+function IntentResponseBlock({ payload, onQueryAction }: { payload: BackendResponse; onQueryAction?: (q: string) => void }) {
+  const { intent, count, results, prediction, summary, insights } = payload;
   const rawCount = count ?? (results ? results.length : 0);
 
   return (
-    <div className="space-y-4">
-      {/* 1. SEARCH_CASES or SEARCH_VICTIMS */}
-      {(intent === 'SEARCH_CASES' || intent === 'SEARCH_VICTIMS') && results && (
-        <CasesTable results={results} />
-      )}
+    <ErrorBoundary>
+      <div className="space-y-4">
+        {/* 1. SEARCH_CASES or SEARCH_VICTIMS */}
+        {(intent === 'SEARCH_CASES' || intent === 'SEARCH_VICTIMS') && Array.isArray(results) && (
+          <CasesTable records={results} />
+        )}
 
-      {/* 2. SEARCH_ACCUSED, MOST_WANTED, REPEAT_OFFENDERS */}
-      {(intent === 'SEARCH_ACCUSED' || intent === 'MOST_WANTED' || intent === 'REPEAT_OFFENDERS') && results && (
-        <AccusedCardGrid results={results} />
-      )}
+        {/* FIR_LOOKUP */ }
+        {intent === 'FIR_LOOKUP' && Array.isArray(results) && (
+          <FIRLookupDossier records={results} onQueryAction={onQueryAction} />
+        )}
+
+        {/* 2. SEARCH_ACCUSED, MOST_WANTED, REPEAT_OFFENDERS */}
+        {(intent === 'SEARCH_ACCUSED' || intent === 'MOST_WANTED' || intent === 'REPEAT_OFFENDERS') && Array.isArray(results) && (
+          <AccusedCardGrid records={results} />
+        )}
 
       {/* 3. AGGREGATE_COUNT */}
       {intent === 'AGGREGATE_COUNT' && (
@@ -1266,15 +1393,8 @@ function IntentResponseBlock({ payload }: { payload: BackendResponse }) {
 
       {/* 7. Automatic insights panels */}
       {insights && insights.length > 0 && <InsightsBlock insights={insights} />}
-
-      {/* 8. Explainer Drawer box */}
-      {explanation && (
-        <QueryExplanationBox
-          explanation={explanation}
-          duration={payload.metadata?.query_time_ms || 1}
-        />
-      )}
     </div>
+    </ErrorBoundary>
   );
 }
 
@@ -1348,11 +1468,11 @@ export default function AIWorkspace({
   const [inputValue, setInputValue] = useState('');
   const [selectedModel, setSelectedModel] = useState('KSP-Sentinel-v3.5-Intelligence');
   const [isTyping, setIsTyping] = useState(false);
-  const [expandedJson, setExpandedJson] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [loadingStage, setLoadingStage] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [demoActive, setDemoActive] = useState(false);
+  const [activeDrawerPayload, setActiveDrawerPayload] = useState<BackendResponse | null>(null);
   const [bootLines, setBootLines] = useState<string[]>([]);
   const [language, setLanguage] = useState<'auto' | 'en' | 'kn'>('auto');
   const [activeUiLang, setActiveUiLang] = useState<'en' | 'kn'>('en');
@@ -1440,7 +1560,6 @@ export default function AIWorkspace({
       recognition.start();
     } catch (err) {
       setMicState('error');
-      setMicError('Failed to start microphone');
     }
   };
 
@@ -1674,21 +1793,29 @@ export default function AIWorkspace({
 
       // Build text summary
       const intentLabel = data.intent?.replace(/_/g, ' ') ?? 'Response';
-      let bubbleText = data.summary ?? `Intent detected: ${intentLabel}.`;
+      let safeSummary = data.summary;
+      
+      if (typeof safeSummary === 'object' && safeSummary !== null) {
+        // Strict fallback. NEVER stringify the entire object into the chat.
+        safeSummary = (safeSummary as any).summary ?? (safeSummary as any).text ?? null;
+      }
+      
+      let bubbleText = (typeof safeSummary === 'string' && safeSummary.trim() !== '') 
+        ? safeSummary 
+        : `Intent detected: ${intentLabel}.`;
 
       if (data.intent === 'PREDICT_CRIME' && data.prediction) {
         const p = data.prediction;
         bubbleText = `Prediction for ${p.forecast_month}: ${p.predicted_cases} cases expected. Risk: ${p.risk_level}. Confidence: ${p.confidence}%.`;
       } else if (data.intent === 'AGGREGATE_COUNT' && data.count !== undefined) {
-        bubbleText = data.summary ?? `Total aggregate count: ${data.count}`;
+        bubbleText = (typeof safeSummary === 'string' && safeSummary.trim() !== '') ? safeSummary : `Total aggregate count: ${data.count}`;
       } else if (data.results && data.results.length > 0) {
-        bubbleText = data.summary ?? `Retrieved ${data.results.length} record(s) matching request.`;
+        bubbleText = (typeof safeSummary === 'string' && safeSummary.trim() !== '') ? safeSummary : `Retrieved ${data.results.length} record(s) matching your request.`;
       }
 
       if (isKn) {
         try {
           if (bubbleText) bubbleText = await translateToKannada(bubbleText);
-          if (data.summary) data.summary = await translateToKannada(data.summary);
           if (data.insights && Array.isArray(data.insights)) {
             data.insights = await Promise.all(data.insights.map((i: string) => translateToKannada(i)));
           }
@@ -1743,14 +1870,6 @@ export default function AIWorkspace({
     }
   };
 
-  const toggleJson = (id: string) => {
-    setExpandedJson((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const copyMessageText = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
   const regenerateResponse = () => {
     // Find last user message in the list
     const userMsgs = messages.filter((m) => m.sender === 'user');
@@ -1795,30 +1914,7 @@ export default function AIWorkspace({
       return false;
     };
 
-    const drawBadge = (text: string, x: number, yPos: number, risk: string) => {
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      let bgColor = [226, 232, 240]; // Slate 200
-      let textColor = [71, 85, 105]; // Slate 600
 
-      if (risk === 'HIGH' || risk === 'CRITICAL') {
-        bgColor = [254, 226, 226]; // Red 100
-        textColor = [220, 38, 38]; // Red 600
-      } else if (risk === 'MEDIUM') {
-        bgColor = [255, 237, 213]; // Orange 100
-        textColor = [234, 88, 12]; // Orange 600
-      } else if (risk === 'LOW') {
-        bgColor = [220, 252, 231]; // Green 100
-        textColor = [22, 163, 74]; // Green 600
-      }
-
-      doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
-      doc.roundedRect(x, yPos - 4, doc.getTextWidth(text) + 6, 6, 1, 1, 'F');
-      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
-      doc.text(text, x + 3, yPos + 0.5);
-      doc.setTextColor(0, 0, 0); // reset
-      return doc.getTextWidth(text) + 10;
-    };
 
     // --- COVER / HEADER ---
     doc.setFillColor(15, 23, 42); // Slate 900
@@ -1948,10 +2044,15 @@ export default function AIWorkspace({
       y += 10;
     }
 
-    activePayloads.forEach((msg, idx) => {
+    const aiMessages = messages.filter(m => m.sender === 'assistant' && m.backendPayload);
+
+    aiMessages.forEach((msg, idx) => {
       checkPageBreak(50);
       
       const payload = msg.backendPayload!;
+      const msgIndex = messages.findIndex(m => m.id === msg.id);
+      const userMsg = msgIndex > 0 ? messages[msgIndex - 1] : null;
+      const userText = userMsg && userMsg.sender === 'user' ? userMsg.text : 'Unknown Query';
       
       // Finding Header
       doc.setFillColor(241, 245, 249);
@@ -1960,79 +2061,100 @@ export default function AIWorkspace({
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(15, 23, 42);
-      doc.text(`FINDING ${idx + 1}: ${payload.intent?.replace(/_/g, ' ') || 'Response'}`, margin + 3, y + 5.5);
+      doc.text(`Finding ${idx + 1}`, margin + 3, y + 5.5);
       y += 12;
 
-      // Badges
+      // User Query
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.setTextColor(0,0,0);
-      let riskStr = payload.prediction?.risk_level || 'UNKNOWN';
-      let confStr = payload.prediction?.confidence ? `${payload.prediction.confidence}%` : 'N/A';
-      
-      doc.text("Risk: ", margin, y);
-      let offset = drawBadge(riskStr, margin + 12, y, riskStr);
-      doc.text("Confidence: ", margin + 12 + offset + 5, y);
-      drawBadge(confStr, margin + 12 + offset + 26, y, 'LOW');
-      y += 8;
+      doc.setTextColor(71, 85, 105);
+      doc.text("User Query:", margin, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(15, 23, 42);
+      const queryLines = doc.splitTextToSize(userText.replace(/[^\x20-\x7E\n]/g, ""), maxWidth);
+      doc.text(queryLines, margin, y);
+      y += queryLines.length * 5 + 4;
+
+      // Assistant Response
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(71, 85, 105);
+      doc.text("Assistant Response:", margin, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(15, 23, 42);
+      let responseText = String(msg.text).replace(/[^\x20-\x7E\n]/g, ""); 
+      const respLines = doc.splitTextToSize(responseText, maxWidth);
+      doc.text(respLines, margin, y);
+      y += respLines.length * 5 + 4;
 
       // Summary
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text("Summary:", margin, y);
-      doc.setFont("helvetica", "normal");
-      
-      let findingsText = "";
-      if (payload.prediction) {
-        findingsText = `Forecast for ${payload.prediction.forecast_month} indicates ${payload.prediction.predicted_cases} potential cases. Trend is ${payload.prediction.trend}.`;
-      } else if (payload.summary) {
-        findingsText = payload.summary;
-      } else {
-        findingsText = `Actionable intelligence retrieved successfully.`;
+      if (payload.summary) {
+        doc.setFont("helvetica", "bold");
+        doc.text("Summary:", margin, y);
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        const sumLines = doc.splitTextToSize(String(payload.summary).replace(/[^\x20-\x7E\n]/g, ""), maxWidth);
+        doc.text(sumLines, margin, y);
+        y += sumLines.length * 5 + 4;
       }
-      findingsText = findingsText.replace(/[^\x20-\x7E\n]/g, ""); 
-      
-      const findLines = doc.splitTextToSize(findingsText, maxWidth - 20);
-      doc.text(findLines, margin + 20, y);
-      y += findLines.length * 5 + 4;
 
-      // Query Details Box
-      checkPageBreak(35);
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(margin, y, maxWidth, 28, 2, 2, 'FD');
-      
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(15, 23, 42);
-      doc.text("Query Details", margin + 4, y + 6);
-      
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      doc.setTextColor(71, 85, 105);
-      const filters = payload.explanation?.filters?.join(', ') || 'None';
-      const records = payload.results?.length ? payload.results.length.toString() : (payload.count !== undefined ? payload.count.toString() : 'N/A');
-      const timeMs = payload.metadata?.query_time_ms || 0;
-      
-      doc.text(`Intent:`, margin + 4, y + 12);
-      doc.text(`${payload.intent || 'Unknown'}`, margin + 30, y + 12);
-      
-      doc.text(`Filters:`, margin + 90, y + 12);
-      doc.text(`${filters.substring(0, 45)}${filters.length > 45 ? '...' : ''}`, margin + 115, y + 12);
-      
-      doc.text(`Records:`, margin + 4, y + 18);
-      doc.text(`${records}`, margin + 30, y + 18);
-      
-      doc.text(`Execution:`, margin + 90, y + 18);
-      doc.text(`${timeMs} ms`, margin + 115, y + 18);
-      
-      doc.text(`Status:`, margin + 4, y + 24);
-      doc.text(`${payload.success ? 'Success' : 'Failed'}`, margin + 30, y + 24);
+      // Prediction specifics
+      if (payload.prediction) {
+        doc.setFont("helvetica", "bold");
+        doc.text("Prediction Insight:", margin, y);
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        doc.text(`Forecast: ${payload.prediction.forecast_month} | Predicted Cases: ${payload.prediction.predicted_cases} | Trend: ${payload.prediction.trend}`, margin, y);
+        y += 6;
+      }
 
-      doc.text(`Source:`, margin + 90, y + 24);
-      doc.text(`KSP Data Warehouse`, margin + 115, y + 24);
-      
-      y += 36;
+      // Render Table
+      if (payload.results && Array.isArray(payload.results) && payload.results.length > 0) {
+        checkPageBreak(30);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(71, 85, 105);
+        doc.text(`Records Found: ${payload.results.length}`, margin, y);
+        y += 6;
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(15, 23, 42);
+        const headers = Object.keys(payload.results[0]).slice(0, 4); // Up to 4 cols
+        const colWidth = maxWidth / headers.length;
+        
+        doc.setFillColor(241, 245, 249);
+        doc.rect(margin, y, maxWidth, 6, 'F');
+        headers.forEach((h, i) => {
+          doc.text(h.substring(0, 15), margin + 2 + (i * colWidth), y + 4);
+        });
+        y += 6;
+        
+        doc.setFont("helvetica", "normal");
+        const rowsToDraw = payload.results.slice(0, 5);
+        rowsToDraw.forEach((row) => {
+          checkPageBreak(10);
+          headers.forEach((h, i) => {
+            const val = String(row[h] || '').substring(0, 20);
+            doc.text(val, margin + 2 + (i * colWidth), y + 4);
+          });
+          doc.setDrawColor(226, 232, 240);
+          doc.line(margin, y + 6, margin + maxWidth, y + 6);
+          y += 6;
+        });
+        
+        if (payload.results.length > 5) {
+          y += 4;
+          doc.setFont("helvetica", "italic");
+          doc.setTextColor(100, 116, 139);
+          doc.text(`...and ${payload.results.length - 5} more matching records.`, margin + 2, y);
+          y += 6;
+        }
+        y += 4;
+      }
+      y += 8;
     });
 
     // --- RECOMMENDATIONS ---
@@ -2109,6 +2231,60 @@ export default function AIWorkspace({
       y += lines.length * 5 + 2;
     });
 
+    // --- DEVELOPER METADATA ---
+    checkPageBreak(30);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("4. DEVELOPER METADATA", margin, y);
+    y += 10;
+    
+    aiMessages.forEach((msg, idx) => {
+      const payload = msg.backendPayload!;
+      checkPageBreak(40);
+      
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(margin, y, maxWidth, 32, 2, 2, 'FD');
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`Query ${idx + 1} Metadata`, margin + 4, y + 6);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(71, 85, 105);
+      
+      let filters = 'None';
+      if (Array.isArray(payload.explanation?.filters)) {
+        filters = payload.explanation!.filters.join(', ');
+      } else if (payload.explanation?.filters) {
+        filters = String(payload.explanation.filters);
+      }
+      
+      const timeMs = payload.metadata?.query_time_ms || 0;
+      let confStr = payload.explanation?.confidence ? `${(payload.explanation.confidence * 100).toFixed(1)}%` : '100.0%';
+      
+      doc.text(`Intent:`, margin + 4, y + 12);
+      doc.text(`${payload.intent || 'Unknown'}`, margin + 30, y + 12);
+      
+      doc.text(`Filters:`, margin + 90, y + 12);
+      doc.text(`${filters.substring(0, 45)}${filters.length > 45 ? '...' : ''}`, margin + 115, y + 12);
+      
+      doc.text(`Confidence:`, margin + 4, y + 18);
+      doc.text(`${confStr}`, margin + 30, y + 18);
+      
+      doc.text(`Execution:`, margin + 90, y + 18);
+      doc.text(`${timeMs} ms`, margin + 115, y + 18);
+      
+      doc.text(`SQL Statement:`, margin + 4, y + 24);
+      const sqlText = (payload.explanation?.sql_summary || 'None').replace(/[^\x20-\x7E\n]/g, "");
+      doc.text(sqlText.substring(0, 75) + (sqlText.length > 75 ? '...' : ''), margin + 30, y + 24);
+      
+      y += 40;
+    });
+
     // Add footer to all pages
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
@@ -2133,112 +2309,111 @@ export default function AIWorkspace({
 
   return (
     <LangContext.Provider value={activeUiLang}>
-    <div className={`premium-card flex flex-col overflow-hidden shadow-2xl scanline-overlay scanline-line transition-all duration-300 ease-in-out ${isFullscreen ? 'w-full h-full bg-neutral-950 rounded-none border-0' : `relative ${className}`}`}>
-      {/* Workspace Header */}
-      <div className="flex items-center justify-between px-5 h-14 border-b border-neutral-800 bg-neutral-900/30">
-        <div className="flex items-center space-x-3">
-          <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />
+    <div className={`premium-card flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isFullscreen ? 'w-full h-full bg-[#0B0F14] rounded-none border-0' : `relative bg-[#0B0F14] ${className}`}`}>
+      {/* Workspace Header Redesign */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#0B0F14]">
+        {/* Left Side: Title & Subtitle */}
+        <div className="flex items-start space-x-3">
+          <Sparkles className="w-6 h-6 text-[#18D3C5] mt-1" />
           <div className="flex flex-col">
-            <span className="text-sm font-mono font-bold tracking-widest text-white leading-none">AI INVESTIGATION CO-PILOT</span>
-            <span className="text-[10px] font-mono text-neutral-500 tracking-wider mt-1 uppercase">Natural Language Crime Intelligence Engine</span>
+            <span className="text-sm font-bold text-white tracking-wide">AI INVESTIGATION CO-PILOT</span>
+            <span className="text-xs text-neutral-500 mt-0.5 flex items-center">
+              Your intelligent partner in crime investigation 
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ml-2 animate-pulse"></span>
+            </span>
           </div>
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
         </div>
-        <div className="flex items-center space-x-3.5">
-          {/* Demo Mode Button */}
-          <button
-            onClick={toggleDemoMode}
-            className={`px-3 py-1 border text-xs font-mono rounded-lg flex items-center space-x-1.5 cursor-pointer transition ${
-              demoActive
-                ? 'bg-rose-950/40 border-rose-500/40 text-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.3)] font-bold'
-                : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
-            }`}
-          >
-            <Flame className={`w-4 h-4 ${demoActive ? 'animate-pulse text-rose-400' : ''}`} />
-            <span>{demoActive ? t('Demo Active', activeUiLang) : t('Activate Demo', activeUiLang)}</span>
-          </button>
+
+        {/* Center: AI Co-Pilot Tab & Selectors */}
+        <div className="hidden lg:flex items-center space-x-6">
+          <div className="flex items-center space-x-2 bg-[#18D3C5]/10 border border-[#18D3C5]/20 px-4 py-1.5 rounded-full text-[#18D3C5] text-xs font-semibold cursor-default">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Co-Pilot</span>
+          </div>
           
-          <label className="text-xs font-mono text-neutral-500 uppercase">Lang:</label>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as any)}
-            className="bg-neutral-900 border border-neutral-800 text-xs font-mono text-cyan-400 rounded-lg px-2.5 py-1 focus:outline-none focus:border-cyan-500 cursor-pointer mr-3"
-          >
-            <option value="auto">Auto Detect</option>
-            <option value="en">🇬🇧 English</option>
-            <option value="kn">🇮🇳 ಕನ್ನಡ</option>
-          </select>
-          <label className="text-xs font-mono text-neutral-500 uppercase">Model:</label>
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="bg-neutral-900 border border-neutral-800 text-xs font-mono text-cyan-400 rounded-lg px-2.5 py-1 focus:outline-none focus:border-cyan-500 cursor-pointer"
-          >
-            <option value="KSP-Sentinel-v3.5-Intelligence">KSP-Sentinel-v3.5 (GovFineTuned)</option>
-            <option value="Llama-3-Gov-Security">Llama-3-Gov-Security (8B)</option>
-            <option value="DeepSeek-R1-District">DeepSeek-R1-District-Core</option>
-          </select>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-neutral-500">Model:</span>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="bg-transparent border border-white/10 text-xs text-neutral-300 rounded-md px-2.5 py-1 focus:outline-none focus:border-white/20 cursor-pointer hover:bg-white/5 transition appearance-none pr-6 relative"
+              style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%239ca3af%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%222%22 d=%22M19 9l-7 7-7-7%22/%3E%3C/svg%3E")', backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1em' }}
+            >
+              <option value="Llama-3.1-8B">Llama-3.1-8B</option>
+              <option value="KSP-Sentinel-v3.5-Intelligence">KSP-Sentinel-v3.5</option>
+              <option value="DeepSeek-R1-District">DeepSeek-R1-District</option>
+            </select>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-neutral-500">Language:</span>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as any)}
+              className="bg-transparent border border-white/10 text-xs text-neutral-300 rounded-md px-2.5 py-1 focus:outline-none focus:border-white/20 cursor-pointer hover:bg-white/5 transition appearance-none pr-6 relative"
+              style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 24 24%22 stroke=%22%239ca3af%22%3E%3Cpath stroke-linecap=%22round%22 stroke-linejoin=%22round%22 stroke-width=%222%22 d=%22M19 9l-7 7-7-7%22/%3E%3C/svg%3E")', backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1em' }}
+            >
+              <option value="auto">Auto Detect</option>
+              <option value="en">English</option>
+              <option value="kn">Kannada</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Right Side: Health, Buttons */}
+        <div className="flex items-center space-x-3">
+          <div className="hidden sm:flex items-center space-x-1.5 px-2 py-1 border border-white/10 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span className="text-[10px] text-neutral-400 font-medium tracking-wide">API Healthy</span>
+          </div>
+          
           <button
             onClick={() => {
               setMessages([messages[0]]);
               setShowSuggestions(true);
               setDemoActive(false);
             }}
-            title={t("Clear Log", activeUiLang)}
-            className="p-1.5 text-neutral-500 hover:text-cyan-400 hover:bg-neutral-900 rounded-lg transition cursor-pointer"
+            title={t("New Chat", activeUiLang)}
+            className="hidden sm:flex items-center space-x-1.5 text-neutral-400 hover:text-white px-3 py-1.5 border border-white/10 hover:border-white/20 rounded-md transition cursor-pointer text-xs"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>New Chat</span>
           </button>
-          <button
-            onClick={() => onToggleFullscreen && onToggleFullscreen()}
-            title={isFullscreen ? t('Exit Fullscreen (Esc)', activeUiLang) : t('Fullscreen Mode', activeUiLang)}
-            className={`p-1.5 rounded-lg transition cursor-pointer ${isFullscreen ? 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20' : 'text-neutral-500 hover:text-cyan-400 hover:bg-neutral-900'}`}
-          >
-            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-          </button>
+          
           <button
             onClick={exportPDF}
-            title="Export Intelligence Report (PDF)"
-            className="p-1.5 text-neutral-500 hover:text-cyan-400 hover:bg-neutral-900 rounded-lg transition cursor-pointer flex items-center justify-center space-x-1 border border-transparent hover:border-cyan-500/30"
+            title="Export PDF"
+            className="p-1.5 text-neutral-400 border border-white/10 rounded-md hover:text-white hover:border-white/20 transition cursor-pointer"
           >
             <Download className="w-4 h-4" />
-            <span className="text-[10px] uppercase font-bold tracking-wider hidden md:inline-block pr-1">Export PDF</span>
           </button>
-        </div>
-      </div>
 
-      {/* Live System Status Ribbon */}
-      <div className="bg-neutral-900/40 border-b border-neutral-850 px-5 py-2.5 flex items-center justify-between text-xs font-mono text-neutral-500 uppercase tracking-wide select-none">
-        <div className="flex items-center space-x-3.5">
-          <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse" />Portal: Online</span>
-          <span>•</span>
-          <span>Model: <span className="text-cyan-455 font-bold">KSP-Sentinel-v3.5</span></span>
-          <span>•</span>
-          <span>DB Socket: <span className="text-emerald-455 font-bold">Connected</span></span>
-        </div>
-        <div className="flex items-center space-x-3.5">
-          <span>Latency Target: <span className="text-purple-400">&lt;200ms</span></span>
-          <span>•</span>
-          <span>API Status: <span className="text-emerald-455 font-bold">100% Healthy</span></span>
+          <button
+            onClick={() => onToggleFullscreen && onToggleFullscreen()}
+            title="Fullscreen"
+            className="p-1.5 text-neutral-400 border border-white/10 rounded-md hover:text-white hover:border-white/20 transition cursor-pointer"
+          >
+             {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 
       {/* Message Output Workspace */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
         
         {/* LANDING EXPERIENCE SCREEN */}
         {messages.length === 1 && !demoActive && (
-          <div className={`mx-auto animate-fadeIn ${isFullscreen ? 'space-y-8 max-w-6xl min-h-[calc(100vh-250px)] flex flex-col justify-center py-0' : 'space-y-8 max-w-5xl py-6'}`}>
+          <div className={`mx-auto animate-fadeIn ${isFullscreen ? 'space-y-8 max-w-6xl min-h-[calc(100vh-250px)] flex flex-col justify-center py-0' : 'space-y-8 max-w-5xl py-12'}`}>
             {/* Title & Banner */}
             <div className="text-center space-y-4">
-              <div className="inline-flex p-4 rounded-full border border-cyan-500/20 bg-cyan-950/10 shadow-[0_0_20px_rgba(6,182,212,0.15)] text-cyan-400 mb-2">
+              <div className="inline-flex p-4 rounded-full border border-[#18D3C5]/20 bg-[#18D3C5]/10 shadow-[0_0_30px_rgba(24,211,197,0.15)] text-[#18D3C5] mb-2">
                 <Shield className="w-10 h-10 animate-pulse" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white font-mono uppercase">
-                KSP Sentinel Intelligence Portal
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white font-sans uppercase">
+                AI INVESTIGATION CO-PILOT
               </h1>
               {/* Dynamic Terminal Boot animation logs */}
-              <div className="max-w-xl mx-auto text-xs font-mono text-emerald-400 bg-black/75 border border-neutral-800 p-4 rounded-xl text-left leading-relaxed h-[130px] flex flex-col justify-start overflow-hidden shadow-inner">
+              <div className="max-w-xl mx-auto text-xs font-mono text-emerald-400 bg-[#141A22] border border-white/10 p-5 rounded-xl text-left leading-relaxed h-[130px] flex flex-col justify-start overflow-hidden shadow-inner">
                 {bootLines.map((line, idx) => (
                   <div key={idx} className="animate-fadeIn">{line}</div>
                 ))}
@@ -2381,107 +2556,77 @@ export default function AIWorkspace({
         )}
 
         {/* MESSAGES LISTING */}
+        <ErrorBoundary>
         {(messages.length > 1 || demoActive) && messages.map((msg) => {
           const isUser = msg.sender === 'user';
+          // Mock time format for redesign
+          const timeString = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
           return (
             <div
               key={msg.id}
-              className={`flex flex-col ${
-                isUser ? 'ml-auto items-end max-w-[80%] xl:max-w-[70%]' : `mr-auto items-start w-full ${isFullscreen ? 'max-w-5xl 2xl:max-w-6xl' : 'max-w-[95%]'}`
-              }`}
+              className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} animate-fadeIn mb-6`}
             >
-              {/* Timestamp label */}
-              <span className="text-xs font-mono text-neutral-500 mb-1.5 flex items-center">
-                {isUser ? 'Officer Rathore' : 'KSP-Sentinel-Core'} • {msg.timestamp}
-                {msg.isKannada && isUser && (
-                  <span className="ml-2 inline-flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase border border-cyan-500/20 bg-cyan-500/10 text-cyan-400">
-                    <span className="w-1 h-1 rounded-full bg-cyan-400 animate-pulse mr-0.5"></span>
-                    <span>Kannada Detected</span>
-                  </span>
-                )}
-              </span>
-
-              {/* Bubble container */}
-              <div className="flex items-start space-x-3 w-full group animate-fadeIn">
+              <div className={`flex items-start max-w-[85%] md:max-w-[75%] ${isUser ? 'flex-row-reverse' : 'flex-row'} space-x-4`}>
+                
+                {/* Avatar Icon */}
                 {!isUser && (
-                  <div className="w-10 h-10 rounded-xl border border-neutral-850 bg-neutral-950 flex items-center justify-center text-cyan-400/80 flex-shrink-0 animate-pulse">
-                    <Sparkles className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-full border border-[#18D3C5]/30 bg-[#18D3C5]/10 flex items-center justify-center text-[#18D3C5] flex-shrink-0 mt-1 mr-4">
+                    <Sparkles className="w-4 h-4" />
                   </div>
                 )}
+
+                {/* Message Bubble/Card */}
                 <div
-                  className={`p-4 rounded-2xl border leading-relaxed text-sm md:text-base flex-1 ${
+                  className={`p-5 rounded-2xl flex flex-col space-y-3 shadow-md ${
                     isUser
-                      ? 'bg-neutral-900 border-neutral-850 text-neutral-200 rounded-tr-none'
-                      : 'bg-neutral-900/40 border-neutral-800 text-neutral-300 rounded-tl-none font-sans'
+                      ? 'bg-[#152C2D] text-white rounded-tr-sm border border-[#18D3C5]/10 ml-4'
+                      : 'bg-[#141A22] text-neutral-200 rounded-tl-sm border border-white/5'
                   }`}
                 >
-                  {/* Stream text if newly arrived and assistant */}
-                  {!isUser && msg.isStreaming ? (
-                    <StreamedText
-                      text={msg.id === 'm-welcome' ? t(msg.text, activeUiLang) : msg.text}
-                      onUpdate={() => {
-                        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-                      }}
-                      onComplete={() => {
-                        msg.isStreaming = false;
-                      }}
-                    />
-                  ) : (
-                    <span className="font-sans leading-relaxed text-neutral-250 text-sm md:text-base">{msg.id === 'm-welcome' ? t(msg.text, activeUiLang) : msg.text}</span>
-                  )}
-
-                  {/* ── Action utilities (Copy & Regenerate) ── */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-3 mt-3 pt-2.5 border-t border-neutral-900/50">
-                    <button
-                      onClick={() => copyMessageText(msg.text)}
-                      title={t('Copy response', activeUiLang)}
-                      className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-white transition cursor-pointer"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                    {!isUser && msg.id !== 'm-welcome' && (
-                      <button
-                        onClick={regenerateResponse}
-                        title={t('Regenerate response', activeUiLang)}
-                        className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-500 hover:text-white transition cursor-pointer"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
+                  <div className="font-sans leading-relaxed text-[15px]">
+                    {!isUser && msg.isStreaming ? (
+                      <StreamedText
+                        text={msg.id === 'm-welcome' ? t(msg.text, activeUiLang) : msg.text}
+                        onUpdate={() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })}
+                        onComplete={() => { msg.isStreaming = false; }}
+                      />
+                    ) : (
+                      <span>{msg.id === 'm-welcome' ? t(msg.text, activeUiLang) : msg.text}</span>
                     )}
                   </div>
 
-                  {/* ── Live backend response cards ── */}
+                  {/* Backend Cards (AI Only) */}
                   {msg.backendPayload && (
-                    <div className="mt-2">
-                      <IntentResponseBlock payload={msg.backendPayload} />
-
-                      {/* Raw JSON toggle */}
-                      <div className="mt-4 border border-neutral-800 rounded-xl overflow-hidden">
-                        <button
-                          onClick={() => toggleJson(msg.id)}
-                          className="flex items-center justify-between w-full px-4 py-2 bg-neutral-900 border-b border-neutral-800 text-xs font-mono text-neutral-400 hover:bg-neutral-850 cursor-pointer"
-                        >
-                          <span className="flex items-center">
-                            <FileCode className="w-4 h-4 mr-2 text-cyan-400" />
-                            {t('Raw Backend Response (JSON)', activeUiLang)}
-                          </span>
-                          <span className="text-xs hover:underline">
-                            {expandedJson[msg.id] ? t('Collapse', activeUiLang) : t('Expand', activeUiLang)}
-                          </span>
-                        </button>
-                        {expandedJson[msg.id] && (
-                          <pre className="p-4 bg-black text-xs font-mono text-emerald-400 overflow-x-auto max-h-56">
-                            <code>{JSON.stringify(msg.backendPayload, null, 2)}</code>
-                          </pre>
-                        )}
-                      </div>
+                    <div className="mt-4">
+                      <IntentResponseBlock payload={msg.backendPayload} onQueryAction={handleSend} />
                     </div>
                   )}
+
+                  {/* Metadata Footer */}
+                  <div className={`flex items-center space-x-2 text-[11px] font-medium text-neutral-500 pt-2 ${isUser ? 'justify-end' : 'justify-between'}`}>
+                    {!isUser && msg.backendPayload && (
+                      <button
+                        onClick={() => setActiveDrawerPayload(msg.backendPayload || null)}
+                        className="flex items-center space-x-1 hover:text-[#18D3C5] transition cursor-pointer px-2 py-1 rounded-md hover:bg-[#18D3C5]/10 border border-transparent hover:border-[#18D3C5]/20"
+                        title="View Developer Info"
+                      >
+                        <Info className="w-3.5 h-3.5" />
+                        <span>Info</span>
+                      </button>
+                    )}
+                    <div className="flex items-center space-x-2">
+                      <span>{timeString}</span>
+                      {isUser && <CheckCheck className="w-3.5 h-3.5 text-[#18D3C5]" />}
+                    </div>
+                  </div>
                 </div>
+
               </div>
             </div>
           );
         })}
+        </ErrorBoundary>
 
         {/* AI Typing Indicator */}
         {isTyping && <LoadingSkeleton stage={loadingStage} />}
@@ -2492,22 +2637,95 @@ export default function AIWorkspace({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Developer Mode Drawer */}
+      {activeDrawerPayload && (
+        <>
+          <div 
+            className="absolute inset-0 bg-black/50 z-40 animate-in fade-in duration-300"
+            onClick={() => setActiveDrawerPayload(null)}
+          />
+          <div className="absolute top-0 right-0 bottom-0 w-full max-w-md bg-[#0B0F14] border-l border-white/10 shadow-2xl z-50 flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-[#141A22]">
+              <div className="flex items-center space-x-2">
+                <Database className="w-5 h-5 text-[#18D3C5]" />
+                <h3 className="text-white font-semibold tracking-wide font-sans">Developer Inspector</h3>
+              </div>
+              <button 
+                onClick={() => setActiveDrawerPayload(null)}
+                className="text-neutral-400 hover:text-white transition p-1 rounded-md hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              {/* Metadata Overview */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#141A22] border border-white/5 p-3 rounded-xl flex flex-col">
+                  <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-bold mb-1">Intent</span>
+                  <span className="text-xs text-white font-mono">{activeDrawerPayload.intent || (activeDrawerPayload.explanation?.intent)}</span>
+                </div>
+                <div className="bg-[#141A22] border border-white/5 p-3 rounded-xl flex flex-col">
+                  <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-bold mb-1">Confidence</span>
+                  <span className="text-xs text-[#18D3C5] font-mono">{activeDrawerPayload.explanation?.confidence ? (activeDrawerPayload.explanation.confidence * 100).toFixed(1) : '100.0'}%</span>
+                </div>
+                <div className="bg-[#141A22] border border-white/5 p-3 rounded-xl flex flex-col col-span-2">
+                  <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-bold mb-1">Execution Time</span>
+                  <span className="text-xs text-emerald-400 font-mono">{activeDrawerPayload.metadata?.query_time_ms || 0}ms</span>
+                </div>
+              </div>
+
+              {/* Filters */}
+              {activeDrawerPayload.explanation?.filters && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Applied Filters</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {(Array.isArray(activeDrawerPayload.explanation.filters) 
+                      ? activeDrawerPayload.explanation.filters 
+                      : [String(activeDrawerPayload.explanation.filters)]
+                    ).map((f: string, i: number) => (
+                      <span key={i} className="px-2 py-1 rounded border border-cyan-500/30 bg-cyan-950/40 text-cyan-400 text-[10px] font-mono shadow-[0_0_8px_rgba(6,182,212,0.1)]">
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SQL Query */}
+              {activeDrawerPayload.explanation?.sql_summary && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Executed SQL</h4>
+                  <div className="bg-neutral-950 border border-white/5 p-4 rounded-xl relative group">
+                    <pre className="text-xs font-mono text-cyan-400 overflow-x-auto whitespace-pre-wrap">{activeDrawerPayload.explanation.sql_summary}</pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Raw JSON */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Raw JSON Payload</h4>
+                <div className="bg-neutral-950 border border-white/5 p-4 rounded-xl relative group">
+                  <pre className="text-[10px] font-mono text-neutral-400 overflow-x-auto whitespace-pre-wrap">
+                    {JSON.stringify(activeDrawerPayload, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Suggestions and Input bar */}
-      <div className={`border-t border-neutral-800 bg-neutral-950/70 relative ${isFullscreen ? 'p-4 pb-[max(env(safe-area-inset-bottom,16px),16px)]' : 'p-5 pb-[max(env(safe-area-inset-bottom,20px),20px)]'}`}>
-        
-        {inputValue.length > 0 && !inputValue.trim() && (
-          <span className="absolute -top-7 left-4 text-[10px] text-amber-500 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 font-mono tracking-wide z-10 animate-fade-in">
-            {t('Please enter a valid query.', activeUiLang)}
-          </span>
-        )}
+      <div className="relative pt-2 pb-6 px-4 md:px-8 bg-transparent">
         {/* Suggestion Chips */}
         {showSuggestions && messages.length === 1 && !demoActive && (
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="mb-4 flex flex-wrap gap-2 justify-center">
             {suggestedQueries.crimeSearch.slice(0, 1).concat(suggestedQueries.analytics.slice(0, 1)).concat(suggestedQueries.prediction).concat(suggestedQueries.hotspots).map((pill: string, idx: number) => (
               <button
                 key={idx}
                 onClick={() => handleSend(pill)}
-                className={`rounded-full border border-neutral-850 bg-neutral-900/40 text-neutral-350 hover:text-cyan-405 hover:border-cyan-500/30 transition cursor-pointer font-sans font-semibold hover:bg-neutral-800 ${isFullscreen ? 'px-3 py-1.5 text-[11px]' : 'px-4 py-2 text-xs'}`}
+                className={`rounded-full border border-white/10 bg-white/5 text-neutral-300 hover:text-[#18D3C5] hover:border-[#18D3C5]/30 transition cursor-pointer font-sans text-xs px-4 py-2 hover:bg-white/10`}
               >
                 {pill}
               </button>
@@ -2515,55 +2733,64 @@ export default function AIWorkspace({
           </div>
         )}
 
-        <div className="relative rounded-xl border border-neutral-800 bg-neutral-900/60 focus-within:border-cyan-500/40 focus-within:bg-neutral-900 focus-within:shadow-[0_0_15px_rgba(6,182,212,0.06)] transition duration-200">
-          <textarea
-            rows={1}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t("Ask about any FIR, accused, location, or crime pattern...", activeUiLang)}
-            className={`w-full pl-4 pr-36 bg-transparent text-neutral-200 focus:outline-none resize-none placeholder:text-neutral-500 font-sans leading-relaxed ${isFullscreen ? 'py-3 text-sm' : 'py-4 text-sm md:text-base'}`}
-          />
-          <div className={`absolute flex items-center space-x-2.5 ${isFullscreen ? 'right-2.5 bottom-2.5' : 'right-3.5 bottom-3.5'}`}>
-            {micError && (
-              <span className="text-[10px] text-rose-500 font-mono tracking-wide px-2 mr-1">
-                {micError}
-              </span>
-            )}
-            <button
-              onClick={toggleMicrophone}
-              title={micState === 'listening' ? t('Stop Listening', activeUiLang) : t('Voice Query', activeUiLang)}
-              className={`p-1.5 rounded-lg transition cursor-pointer ${
-                micState === 'listening' 
-                  ? 'text-rose-400 bg-rose-500/10 animate-pulse'
-                  : micState === 'error'
-                  ? 'text-rose-500 hover:text-rose-400 hover:bg-neutral-800'
-                  : 'text-neutral-500 hover:text-cyan-400 hover:bg-neutral-800'
-              }`}
-            >
-              {micState === 'listening' ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </button>
-            <button
-              onClick={() => alert(t('File upload simulated. Select FIR payload or JSON file.', activeUiLang))}
-              title={t("Attach File/Payload", activeUiLang)}
-              className="p-1.5 rounded-lg text-neutral-500 hover:text-cyan-400 hover:bg-neutral-800 transition cursor-pointer"
-            >
-              <Paperclip className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => handleSend()}
-              disabled={isTyping || !inputValue.trim()}
-              className="p-2 rounded-xl bg-cyan-950 text-cyan-405 border border-cyan-500/20 hover:bg-cyan-900 hover:text-white transition cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.1)] disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+        {/* Input Box Redesign */}
+        <div className="max-w-4xl mx-auto">
+          <div className="relative rounded-2xl border border-white/10 bg-[#0B0F14] focus-within:border-[#18D3C5]/40 focus-within:shadow-[0_0_15px_rgba(24,211,197,0.15)] transition duration-300">
+            <textarea
+              rows={1}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t("Ask about any FIR, accused, location, or crime pattern...", activeUiLang)}
+              className="w-full pl-5 pr-36 bg-transparent text-neutral-200 focus:outline-none resize-none placeholder:text-neutral-500 font-sans leading-relaxed py-4 text-sm md:text-base pt-5"
+            />
+            
+            {/* Input Footer Icons */}
+            <div className="flex items-center justify-between px-4 pb-3">
+              {/* Left Icons */}
+              <div className="flex items-center space-x-3 text-neutral-500">
+                <button className="hover:text-white transition cursor-pointer p-1"><Paperclip className="w-4 h-4" /></button>
+                <button className="flex items-center space-x-1 hover:text-white transition cursor-pointer p-1"><Calendar className="w-4 h-4" /><span className="text-[10px] uppercase font-bold tracking-wider hidden sm:block">Date</span></button>
+                <button className="flex items-center space-x-1 hover:text-white transition cursor-pointer p-1"><MapPin className="w-4 h-4" /><span className="text-[10px] uppercase font-bold tracking-wider hidden sm:block">Location</span></button>
+                <button className="flex items-center space-x-1 hover:text-white transition cursor-pointer p-1"><Filter className="w-4 h-4" /><span className="text-[10px] uppercase font-bold tracking-wider hidden sm:block">Filters</span></button>
+              </div>
+
+              {/* Right Icons */}
+              <div className="flex items-center space-x-2 relative">
+                {micError && (
+                  <span className="absolute -top-8 right-0 text-[10px] text-rose-500 font-mono tracking-wide px-2 bg-rose-500/10 rounded border border-rose-500/20 whitespace-nowrap">
+                    {micError}
+                  </span>
+                )}
+                <button
+                  onClick={toggleMicrophone}
+                  title={micState === 'listening' ? t('Stop Listening', activeUiLang) : t('Voice Query', activeUiLang)}
+                  className={`p-2 rounded-full transition cursor-pointer ${
+                    micState === 'listening' 
+                      ? 'text-rose-400 bg-rose-500/10 animate-pulse'
+                      : micState === 'error'
+                      ? 'text-rose-500 hover:text-rose-400'
+                      : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  {micState === 'listening' ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => handleSend()}
+                  disabled={!inputValue.trim() || isTyping}
+                  className="p-2 rounded-lg bg-[#18D3C5] hover:bg-[#15B0A4] text-[#0B0F14] disabled:opacity-50 disabled:cursor-not-allowed transition shadow-[0_0_10px_rgba(24,211,197,0.2)]"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center justify-between mt-3 px-1 select-none">
-          <span className="text-xs font-mono text-neutral-600">{t('Secure Portal Link • SSH Encrypted Session', activeUiLang)}</span>
-          <span className="text-xs font-mono text-neutral-600 font-bold text-cyan-500/80">
-            {demoActive ? t('• Demo Mode Preloads Active', activeUiLang) : t('• Live Backend Ready', activeUiLang)}
-          </span>
+          
+          {/* Subtext */}
+          <div className="flex items-center justify-between mt-3 px-2 text-[10px] text-neutral-500 font-medium">
+            <span>Examples: Show theft in Mysuru • Open FIR KSP-000347 • Show murder cases last month</span>
+            <span>Press / for shortcuts</span>
+          </div>
         </div>
       </div>
     </div>

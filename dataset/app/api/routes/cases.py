@@ -40,14 +40,10 @@ def read_cases(db: Session = Depends(get_db)):
 @router.get("/{case_id}", response_model=Dict[str, Any])
 def read_case(case_id: int, db: Session = Depends(get_db)):
     """
-    Return a single FIR.
+    Return a single FIR with complete enriched details via SearchService.
     """
-
-    case = (
-        db.query(CaseMaster)
-        .filter(CaseMaster.case_master_id == case_id)
-        .first()
-    )
+    from app.services.search_service import SearchService
+    case = SearchService.get_case_details(case_id, db)
 
     if case is None:
         raise HTTPException(
@@ -55,17 +51,7 @@ def read_case(case_id: int, db: Session = Depends(get_db)):
             detail="Case not found"
         )
 
-    return {
-        "id": case.case_master_id,
-        "crime_no": case.crime_no,
-        "case_no": case.case_no,
-        "crime_registered_date": case.crime_registered_date,
-        "status_id": case.case_status_id,
-        "gravity_id": case.gravity_offence_id,
-        "brief_facts": case.brief_facts,
-        "latitude": case.latitude,
-        "longitude": case.longitude,
-    }
+    return case
 
 
 @router.post("", status_code=201)

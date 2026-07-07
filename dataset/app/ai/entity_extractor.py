@@ -17,48 +17,60 @@ except ImportError:
 
 # Comprehensive list of Karnataka districts used for fuzzy matching fallback
 _KARNATAKA_DISTRICTS = [
-    "Bengaluru Urban",
-    "Bengaluru Rural",
-    "Mysuru",
-    "Mangalore",
-    "Hubli",
-    "Belgaum",
-    "Mandya",
-    "Shivamogga",
-    "Tumakuru",
-    "Udupi",
-    "Kolar",
-    "Hassan",
+    "Bagalkote",
     "Ballari",
-    "Chikkamagaluru",
-    "Dharwad",
-    "Bagalkot",
+    "Belagavi",
+    "Bengaluru Rural",
+    "Bengaluru Urban",
     "Bidar",
     "Chamarajanagar",
     "Chikkaballapur",
+    "Chikkamagaluru",
     "Chitradurga",
-    "Davangere",
+    "Dakshina Kannada",
+    "Davanagere",
+    "Dharwad",
     "Gadag",
+    "Hassan",
     "Haveri",
+    "Kalaburagi",
     "Kodagu",
+    "Kolar",
     "Koppal",
+    "Mandya",
+    "Mysuru",
     "Raichur",
     "Ramanagara",
+    "Shivamogga",
+    "Tumakuru",
+    "Udupi",
     "Uttara Kannada",
-    "Yadgir",
-    "Vijayanagara",
     "Vijayapura",
-    "Kalaburagi"
+    "Yadgir",
+    "Vijayanagara"
 ]
 
 # Crime Head Aliases
 _CRIME_ALIASES = {
-    "theft": ["theft", "stolen", "stealing", "robbery", "bike theft", "vehicle theft", "chain snatching", "burglary", "larceny", "dacoity"],
+    "theft": ["theft", "stolen", "stealing", "pickpocket"],
+    "robbery": ["robbery", "armed robbery", "loot", "looting"],
+    "burglary": ["burglary", "housebreaking", "breaking and entering"],
+    "snatching": ["snatching", "chain snatching", "bag snatching"],
+    "dacoity": ["dacoity", "armed dacoity", "gang robbery"],
     "assault": ["attack", "beating", "fight", "assault", "battery"],
     "murder": ["homicide", "killed", "murder", "killing"],
     "rape": ["rape", "sexual assault"],
-    "kidnapping": ["abduct", "kidnapping", "missing child", "abduction"],
-    "fraud": ["fraud", "cheating"],
+    "kidnapping": ["abduct", "kidnapping", "missing child", "abduction", "kidnap"],
+    "fraud": ["fraud", "cheating", "scam", "online fraud", "cyber fraud"],
+    "cyber_crime": ["cyber crime", "online scam", "cyber fraud", "internet crime", "hacking", "phishing"],
+    "narcotics": ["drugs", "narcotics", "weed", "cocaine", "smuggling", "drug offence"],
+    "domestic_violence": ["domestic violence", "dowry", "wife beating", "cruelty by husband"],
+    "traffic": ["traffic", "accident", "hit and run", "rash driving"],
+    "missing_person": ["missing person", "lost person"],
+    "vehicle_theft": ["vehicle theft", "bike theft", "car theft"],
+    "rioting": ["rioting", "mob", "protest violence"],
+    "extortion": ["extortion", "blackmail"],
+    "arson": ["arson", "burning", "fire"]
 }
 
 
@@ -110,6 +122,10 @@ class EntityExtractor:
         # 13. Generic Identifier (FIR/Case)
         identifiers = EntityExtractor.parse_identifier(lowered)
 
+        # 14. Acts and Sections
+        act = EntityExtractor.parse_act(lowered)
+        section = EntityExtractor.parse_section(lowered)
+
         return {
             "crime_type": crime_type,
             "district": district,
@@ -128,7 +144,9 @@ class EntityExtractor:
             "date_to": date_to,
             "comparison": comparison,
             "prediction": prediction,
-            "identifiers": identifiers
+            "identifiers": identifiers,
+            "act": act,
+            "section": section
         }
 
     @staticmethod
@@ -162,20 +180,6 @@ class EntityExtractor:
 
         Returns (matched_name, raw_extracted_name, is_valid, list_of_suggestions).
         """
-        # Match pattern "in/from/at/location <district>"
-        pattern = r"(?:in|from|at|location)\s+([a-z]+(?:\s+[a-z]+)*)\b"
-        matches = re.finditer(pattern, text)
-        raw_dist = None
-        for m in matches:
-            val = m.group(1).strip()
-            # Stop words filter to ensure temporal words are not matched
-            if val not in ["next", "last", "this", "month", "week", "year", "police", "accused", "victim", "cases", "theft", "murder", "assault", "offender", "offenders", "criminal", "criminals", "most", "wanted"]:
-                raw_dist = val
-                break
-
-        if not raw_dist:
-            return None, None, True, []
-
         # Get candidates (query database if session provided, else fallback to Karnataka list)
         candidates = []
         if db_session:
@@ -187,22 +191,53 @@ class EntityExtractor:
                 pass
         if not candidates:
             candidates = _KARNATAKA_DISTRICTS
+        else:
+            # Combine DB candidates with canonical districts to ensure valid districts are always recognized
+            candidates = list(set(candidates + _KARNATAKA_DISTRICTS))
 
         # Map to friendly names
         candidate_map = {c.lower(): c for c in candidates}
         # Include custom maps
         candidate_map.update({
             "bangalore": "Bengaluru Urban",
-            "bangaluru": "Bengaluru Urban",
+            "banglore": "Bengaluru Urban",
+            "bengaluru": "Bengaluru Urban",
             "mysore": "Mysuru",
-            "mangalore": "Mangalore",
-            "mangaluru": "Mangalore",
-            "belgaum": "Belgaum",
-            "belagavi": "Belgaum",
-            "hubli": "Hubli",
-            "hubballi": "Hubli",
+            "mangalore": "Dakshina Kannada",
+            "mangaluru": "Dakshina Kannada",
+            "belgaum": "Belagavi",
+            "gulbarga": "Kalaburagi",
+            "shimoga": "Shivamogga",
+            "tumkur": "Tumakuru",
+            "bijapur": "Vijayapura",
+            "hubli": "Dharwad",
+            "hubballi": "Dharwad",
             "coorg": "Kodagu"
         })
+
+        # Match pattern "in/from/at/location/near/of <district>" or exact match anywhere
+        stop_words = ["next", "last", "this", "month", "week", "year", "police", "accused", "victim", "cases", "theft", "murder", "assault", "offender", "offenders", "criminal", "criminals", "most", "wanted"]
+        
+        raw_dist = None
+        all_known = list(candidate_map.keys())
+        all_known.sort(key=len, reverse=True)
+        
+        for k in all_known:
+            if re.search(r"\b" + re.escape(k) + r"\b", text):
+                raw_dist = k
+                break
+                
+        if not raw_dist:
+            pattern = r"(?:in|from|at|near|of|district)\s+([a-z]+(?:\s+[a-z]+)*)\b"
+            matches = re.finditer(pattern, text)
+            for m in matches:
+                val = m.group(1).strip()
+                if val not in stop_words:
+                    raw_dist = val
+                    break
+
+        if not raw_dist:
+            return None, None, True, []
 
         query_term = raw_dist.lower().strip()
 
@@ -311,29 +346,70 @@ class EntityExtractor:
     @staticmethod
     def parse_identifier(text: str) -> Optional[List[str]]:
         """Normalize generic FIR/Crime identifiers into an array of search candidates."""
-        match = re.search(r"(?:fir|case|crime)\s*(?:no\.?|number|id)?\s*[-#:]?\s*([a-z0-9][a-z0-9/-]*)", text, re.IGNORECASE)
+        # Match explicit prefixes (FIR No, Case Number, etc.) followed by an identifier
+        match = re.search(r"\b(?:fir|case|crime)\s+(?:no\.?|number|id)?\s*[-#:]?\s*([A-Z0-9]+[-\s/][A-Z0-9]+|\d+)\b", text, re.IGNORECASE)
         if match:
             raw = match.group(1)
         else:
-            match = re.search(r"\b([a-z]+[-]?\d+)\b", text, re.IGNORECASE)
+            # Fallback to matching standalone common patterns:
+            # 1. KSP-123, KSP 123, or KSP123
+            # 2. 123/2026
+            # 3. 000123 (pure numeric but could be ID, we will grab the first standalone 4+ digit number or slashed string)
+            match = re.search(r"\b([A-Z]{2,5}[-\s]?\d+|\d+/\d+|\d{4,})\b", text, re.IGNORECASE)
             if match:
                 raw = match.group(1)
             else:
                 return None
                 
+        # Normalize raw string: remove spaces
+        raw = re.sub(r"\s+", "", raw)
+                
+        # Parse into a canonical list of variants
+        variants = []
         raw_upper = raw.upper()
-        candidates = set([raw_upper, raw_upper.replace('/', '-'), raw_upper.replace('-', '/')])
+        variants.append(raw_upper)
         
+        # Check for strict formats like KSP-0001 or KSP0001
         m_prefix = re.match(r"([A-Z]+)[-]?(0*)(\d+)", raw_upper)
         if m_prefix:
             prefix, zeros, num = m_prefix.groups()
-            candidates.add(f"{prefix}-{zeros}{num}")
-            candidates.add(f"{prefix}{zeros}{num}")
-            candidates.add(f"{prefix}-{num}")
-            candidates.add(f"{prefix}{num}")
-            candidates.add(num)
+            variants.extend([
+                f"{prefix}-{zeros}{num}",
+                f"{prefix}{zeros}{num}",
+                f"{prefix}-{num}",
+                f"{prefix}{num}",
+                f"{prefix}-{num.zfill(4)}",
+                f"{prefix}-{num.zfill(6)}"
+            ])
             
-        return list(candidates)
+        # Check for slashes (e.g. 120/2026)
+        if "/" in raw_upper:
+            variants.append(raw_upper.replace("/", "-"))
+        elif "-" in raw_upper and re.match(r"\d+-\d+", raw_upper):
+            variants.append(raw_upper.replace("-", "/"))
+            
+        # Ensure we always include the pure numeric part if applicable
+        num_match = re.search(r"\b(\d+)\b", raw_upper)
+        if num_match:
+            pure_num = num_match.group(1)
+            variants.append(pure_num)
+            variants.append(f"KSP-{pure_num.zfill(4)}")
+            variants.append(f"KSP-{pure_num.zfill(6)}")
+
+        # Return unique list
+        return list(set(variants))
+
+    @staticmethod
+    def parse_act(text: str) -> Optional[str]:
+        """Extract act name (e.g., IPC, NDPS)."""
+        match = re.search(r"act\s*[:\-]?\s*([a-z]+)", text, re.IGNORECASE)
+        return match.group(1) if match else None
+
+    @staticmethod
+    def parse_section(text: str) -> Optional[str]:
+        """Extract section number (e.g., 302, 379)."""
+        match = re.search(r"section\s*[:\-]?\s*([a-z0-9]+)", text, re.IGNORECASE)
+        return match.group(1) if match else None
 
     @staticmethod
     def parse_status(text: str) -> Optional[str]:

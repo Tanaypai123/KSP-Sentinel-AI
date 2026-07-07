@@ -136,6 +136,98 @@ class IntelligenceEngine:
         return insights[:3]
 
     @staticmethod
+    def generate_dynamic_insights(results: List[Dict[str, Any]], intent: str = "", db: Any = None) -> Dict[str, Any]:
+        """Dynamically analyze the result set to extract intelligence."""
+        if not results:
+            return {"observations": [], "recommendations": [], "similar_cases": ""}
+
+        observations = []
+        recommendations = set()
+        similar_cases_str = ""
+        
+        # Analyze Districts
+        districts = [r.get("district_name") for r in results if r.get("district_name")]
+        if districts:
+            from collections import Counter
+            counts = Counter(districts)
+            top_district = counts.most_common(1)[0]
+            if top_district[1] > 1:
+                observations.append(f"Crimes are primarily concentrated in {top_district[0]} ({top_district[1]} cases).")
+
+        # Analyze Dates
+        dates = [r.get("crime_registered_date") for r in results if r.get("crime_registered_date")]
+        if dates:
+            dates.sort()
+            latest = dates[-1]
+            if isinstance(latest, str):
+                observations.append(f"The latest incident was registered on {latest}.")
+            elif hasattr(latest, "strftime"):
+                observations.append(f"The latest incident was registered on {latest.strftime('%d %B %Y')}.")
+
+        # Analyze Accused
+        accused = []
+        for r in results:
+            acc_list = r.get("accused_names", [])
+            if isinstance(acc_list, list):
+                accused.extend(acc_list)
+        if accused:
+            counts = Counter(accused)
+            repeat = [name for name, count in counts.items() if count > 1]
+            if repeat:
+                observations.append(f"Multiple FIRs involve repeat offenders (e.g., {repeat[0]}).")
+                recommendations.add("Investigate repeat offenders.")
+                recommendations.add("Check accused history.")
+
+        # Analyze Modus Operandi (Crime Head)
+        crimes = [r.get("crime_category") for r in results if r.get("crime_category")]
+        if crimes:
+            counts = Counter(crimes)
+            top_crime = counts.most_common(1)[0]
+            if top_crime[1] > 1:
+                observations.append(f"Similar Modus Operandi detected across {top_crime[1]} cases ({top_crime[0]}).")
+                recommendations.add("Compare Modus Operandi with nearby FIRs.")
+                
+        # Analyze Similar Cases if FIR_LOOKUP
+        if intent == "FIR_LOOKUP" and db and len(results) == 1:
+            r = results[0]
+            if r.get("police_station_id") and r.get("crime_major_head_id"):
+                try:
+                    from sqlalchemy import text
+                    sim_query = text("""
+                        SELECT c."CrimeNo" 
+                        FROM case_master c
+                        WHERE c."PoliceStationID" = :ps_id 
+                          AND c."CrimeMajorHeadID" = :ch_id 
+                          AND c."CrimeNo" != :fir_no
+                        ORDER BY c."CrimeRegisteredDate" DESC 
+                        LIMIT 4
+                    """)
+                    sim_results = db.execute(sim_query, {
+                        "ps_id": r["police_station_id"],
+                        "ch_id": r["crime_major_head_id"],
+                        "fir_no": r["crime_no"]
+                    }).fetchall()
+                    if sim_results:
+                        sim_firs = [row[0] for row in sim_results]
+                        similar_cases_str = f"This case appears similar to {len(sim_firs)} previously registered FIRs in the same jurisdiction:\n"
+                        similar_cases_str += "\n".join(f"- {f}" for f in sim_firs)
+                        recommendations.add("Review connected investigations.")
+                except Exception as e:
+                    logger.error(f"Error fetching similar cases: {e}")
+
+        # Default Recommendations based on generic analysis
+        if len(results) > 1:
+            recommendations.update(["Review similar FIRs.", "View hotspot analysis."])
+        else:
+            recommendations.update(["Review CCTV footage around recurring locations.", "Check pending forensic reports."])
+
+        return {
+            "observations": observations,
+            "recommendations": list(recommendations)[:5],
+            "similar_cases": similar_cases_str
+        }
+
+    @staticmethod
     def generate_recommendations(intent: str, entities: Dict[str, Any], result_count: int = 1) -> List[str]:
         """Construct a list of contextually relevant recommended follow-up queries."""
         if result_count == 0:

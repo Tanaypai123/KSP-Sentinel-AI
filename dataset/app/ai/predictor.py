@@ -189,8 +189,7 @@ def _fetch_monthly_counts(
 
     rows = db.execute(stmt).all()
 
-    print(f"[PREDICTOR DEBUG] Rows returned from DB: {len(rows)}")
-    print("[PREDICTOR DEBUG] Monthly counts:", [(int(r.yr), int(r.mo), int(r.cnt)) for r in rows])
+    # Internal logging removed for production
 
     return [(int(r.yr), int(r.mo), int(r.cnt)) for r in rows]
 
@@ -221,10 +220,8 @@ def predict_crime(db: Session, parsed_query: Dict[str, Any]) -> Dict[str, Any]:
     crime_head_id     = _resolve_crime_head_id(db, crime_head_name)         if crime_head_name     else None
     police_station_id = _resolve_police_station_id(db, police_station_name) if police_station_name else None
 
-    print("\n[PREDICTOR DEBUG] ---- Filter Resolution ----")
-    print(f"[PREDICTOR DEBUG]  district_name       = {district_name!r}  -> district_id       = {district_id}")
-    print(f"[PREDICTOR DEBUG]  crime_head_name     = {crime_head_name!r}  -> crime_head_id     = {crime_head_id}")
-    print(f"[PREDICTOR DEBUG]  police_station_name = {police_station_name!r}  -> police_station_id = {police_station_id}")
+    # Debug statements removed
+    # Debug statements removed
 
     # ---- Pull historical monthly counts ----
     rows = _fetch_monthly_counts(db, district_id, crime_head_id, police_station_id)

@@ -74,23 +74,28 @@ def _normalize_fir_variants(raw: str) -> list:
 def _filter_fir_number(stmt, value):
     """Filter by FIR number, searching across crime_no AND case_no.
 
-    Generates normalized zero-padded variants so user input like ``KSP-1``
-    matches ``KSP-0001`` or ``KSP-000001`` in the database.
+    Uses the exhaustive list of variants provided by entity_extractor.
     """
-    if not value or not str(value).strip():
+    if not value:
         return stmt
 
-    variants = _normalize_fir_variants(str(value))
+    variants = []
+    if isinstance(value, list):
+        variants = [str(v).strip() for v in value if str(v).strip()]
+    else:
+        variants = [str(value).strip()]
+        
+    if not variants:
+        return stmt
 
-    # Build OR conditions: exact matches first, then partial ILIKE
+    # Build OR conditions
     conditions = []
     for v in variants:
         conditions.append(CaseMaster.crime_no.ilike(v))
         conditions.append(CaseMaster.case_no.ilike(v))
-    # Also add a wildcard partial match on the raw value
-    raw = str(value).strip()
-    conditions.append(CaseMaster.crime_no.ilike(f"%{raw}%"))
-    conditions.append(CaseMaster.case_no.ilike(f"%{raw}%"))
+        # Also add a wildcard partial match for each variant
+        conditions.append(CaseMaster.crime_no.ilike(f"%{v}%"))
+        conditions.append(CaseMaster.case_no.ilike(f"%{v}%"))
 
     return stmt.where(or_(*conditions))
 
@@ -384,12 +389,7 @@ def generate_select(parsed_query: Dict[str, Any]):
             
         if entities.get("accused_name"):
             term = entities["accused_name"]
-            stmt = stmt.where(
-                or_(
-                    Accused.accused_name.ilike(f"%{term}%"),
-                    func.similarity(Accused.accused_name, term) > 0.15
-                )
-            )
+            stmt = stmt.where(Accused.accused_name.ilike(f"%{term}%"))
         if entities.get("gender"):
             try:
                 stmt = stmt.where(Accused.gender_id == int(entities["gender"]))

@@ -37,12 +37,8 @@ def parse_query(query: str, db_session: Optional[Any] = None) -> Dict[str, Any]:
     entities["victim_name"] = ext["victim_name"]
     entities["complainant_name"] = None # complainant is not typically parsed from base name
 
-    # Section / Act extraction fallback
-    sec_match = re.search(r"section\s*[:\-]?\s*(\w+)", query, re.IGNORECASE)
-    entities["section"] = sec_match.group(1) if sec_match else None
-    
-    act_match = re.search(r"act\s*[:\-]?\s*([a-z]+)", query, re.IGNORECASE)
-    entities["act"] = act_match.group(1) if act_match else None
+    entities["section"] = ext.get("section")
+    entities["act"] = ext.get("act")
 
     # Gender mapping: ID values for database compatibility (1=Male, 2=Female)
     gender_map = {"male": 1, "female": 2}

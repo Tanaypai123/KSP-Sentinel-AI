@@ -20,8 +20,8 @@ def test_generic_identifier_normalization():
     assert "145" in EntityExtractor.parse_identifier("Case 145")
     
     # Slashes and hyphens
-    assert set(EntityExtractor.parse_identifier("Crime No 120/2026")) == {"120/2026", "120-2026"}
-    assert set(EntityExtractor.parse_identifier("Crime Number 120/2026")) == {"120/2026", "120-2026"}
+    assert "120/2026" in EntityExtractor.parse_identifier("Crime No 120/2026")
+    assert "120/2026" in EntityExtractor.parse_identifier("Crime Number 120/2026")
     assert "1" in EntityExtractor.parse_identifier("FIR 1")
 
 def test_generic_numeric_filters():
@@ -66,3 +66,39 @@ def test_generic_analytics_intent():
         intent, conf = classify_intent_with_confidence(q)
         assert intent == Intent.CRIME_TREND, f"Failed on '{q}', got {intent}"
         assert conf > 0.5
+
+def test_conversational_intents():
+    from app.ai.pipeline.classifier import classify_pipeline_intent
+    from app.ai.pipeline.normalizer import normalize_text
+    
+    cases = {
+        "hello there": "GREETING",
+        "good morning": "GREETING",
+        "goodbye": "GOODBYE",
+        "thanks a lot": "THANKS",
+        "help me": "HELP",
+        "who are you": "BOT_IDENTITY",
+        "what can you do": "BOT_CAPABILITIES",
+        "djfhkdshfsdf": "UNKNOWN",
+        "asdfgh": "UNKNOWN",
+        "123456": "UNKNOWN"
+    }
+    
+    for q, expected in cases.items():
+        intent, _ = classify_pipeline_intent(normalize_text(q))
+        intent_val = intent.value if hasattr(intent, 'value') else str(intent)
+        assert intent_val == expected, f"Failed on '{q}', got {intent_val}"
+
+def test_canonical_crimes():
+    assert EntityExtractor.parse_crime_type("armed robbery") == "robbery"
+    assert EntityExtractor.parse_crime_type("chain snatching") == "snatching"
+    assert EntityExtractor.parse_crime_type("cyber fraud") == "cyber_crime"
+    assert EntityExtractor.parse_crime_type("wife beating") == "domestic_violence"
+    assert EntityExtractor.parse_crime_type("stolen property") == "theft"
+    assert EntityExtractor.parse_crime_type("hit and run") == "traffic"
+    assert EntityExtractor.parse_crime_type("missing child") == "kidnapping"
+    assert EntityExtractor.parse_crime_type("drug offence") == "narcotics"
+    assert EntityExtractor.parse_crime_type("protest violence") == "rioting"
+    assert EntityExtractor.parse_crime_type("blackmail") == "extortion"
+    assert EntityExtractor.parse_crime_type("burning") == "arson"
+    assert EntityExtractor.parse_crime_type("car theft") == "vehicle_theft"

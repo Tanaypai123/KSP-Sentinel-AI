@@ -1,392 +1,66 @@
 import logging
 import time
-import re
 from typing import Dict, Any, List
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
-from app.ai.intent_classifier import classify_intent_with_confidence
-from app.ai.query_parser import parse_query
-from app.ai.sql_generator import generate_select
-from app.ai.query_executor import execute_query
-from app.ai.response_formatter import format_response
-from app.ai.conversation_memory import merge_with_last, update_state
-from app.ai.insights import IntelligenceEngine
-from app.services.analytics import AnalyticsService
-from app.core.cache import global_cache
 
-logger = logging.getLogger("ksp-sentinel-backend.chat")
 router = APIRouter()
-
-# Default suggested queries for clarifications
-_DEFAULT_SUGGESTIONS = [
-    "Show theft in Mysuru",
-    "Crime trend in Bengaluru Urban",
-    "Top hotspots",
-    "Predict theft next month in Mysuru"
-]
-
+logger = logging.getLogger(__name__)
 
 @router.post("/query", response_model=Dict[str, Any])
 def chat_query(payload: Dict[str, Any], request: Request, db: Session = Depends(get_db)):
     """
-    Execute an AI investigation query, routing by intent.
-
-    Supports caching, explainability, insights, case summary details, and metadata.
+    Handle natural language queries by parsing, executing, and formatting results.
+    Delegates entirely to SearchService.
     """
-    query = payload.get("message", "").strip()
     start_time = time.time()
+    query = payload.get("message", "").strip()
 
     if not query:
         return {
             "success": False,
             "intent": "UNKNOWN",
-            "summary": "Query message cannot be empty.",
+            "summary": "Please enter a valid query.",
             "count": 0,
             "entities": {},
             "results": [],
-            "metadata": {"query_time_ms": 0.0, "cache_hit": False},
+            "metadata": {"query_time_ms": 0.0, "cache_hit": False, "confidence": 0.0},
             "error": "Query message cannot be empty."
         }
 
-    # Step 1: Detect intent and confidence score
-    intent, confidence = classify_intent_with_confidence(query)
-    intent_val = intent.value if intent else "UNKNOWN"
-    request.state.intent = intent_val
-
-    # Step 2: In-memory Cache Lookup (Skip for PREDICT_CRIME)
-    if intent_val != "PREDICT_CRIME":
-        cache_key = f"chat_{query.lower().strip()}"
-        cached = global_cache.get(cache_key)
-        if cached:
-            duration = (time.time() - start_time) * 1000
-            cached["metadata"]["cache_hit"] = True
-            cached["metadata"]["query_time_ms"] = round(duration, 2)
-            logger.info(f"CACHE HIT | Query: {query!r} | Time: {duration:.2f}ms")
-            request.state.cache_hit = True
-            return cached
-
-    request.state.cache_hit = False
-
     try:
-        # Step 3: Detect multiple commands
-        crime_keywords = ["theft", "assault", "murder", "rape", "kidnapping", "robbery", "burglary"]
-        detected_crimes = [c for c in crime_keywords if re.search(r"\b" + re.escape(c) + r"\b", query.lower())]
-        has_multiple_verbs = len(set(re.findall(r"\b(predict|trend|hotspot)\b", query.lower()))) > 1
+        from app.services.search_service import SearchService
+        res = SearchService.search(query, db)
+        res["metadata"]["query"] = query
         
-        if len(detected_crimes) > 1 or has_multiple_verbs:
-            duration = (time.time() - start_time) * 1000
-            logger.warning(f"NLP LOG | Multiple commands detected: {detected_crimes} | Query: {query!r} | Time: {duration:.2f}ms")
-            return {
-                "success": False,
-                "intent": "UNKNOWN",
-                "summary": "I detected multiple commands. Which one should I execute?",
-                "count": 0,
-                "entities": {},
-                "results": [],
-                "metadata": {
-                    "query": query,
-                    "suggestions": [f"Show {c} cases" for c in detected_crimes] if detected_crimes else _DEFAULT_SUGGESTIONS,
-                    "query_time_ms": round(duration, 2),
-                    "cache_hit": False
-                },
-                "error": "Multiple commands detected"
-            }
-
-        # Step 4: Low confidence handling
-        if confidence < 0.55:
-            duration = (time.time() - start_time) * 1000
-            logger.warning(f"NLP LOG | Low confidence intent classification: {confidence} | Query: {query!r}")
-            return {
-                "success": False,
-                "intent": "UNKNOWN",
-                "summary": "I'm not sure what you mean. Did you mean to look up cases, view trends, or run a prediction?",
-                "count": 0,
-                "entities": {},
-                "results": [],
-                "metadata": {
-                    "query": query,
-                    "suggestions": _DEFAULT_SUGGESTIONS,
-                    "confidence": confidence,
-                    "query_time_ms": round(duration, 2),
-                    "cache_hit": False
-                },
-                "error": "Low intent confidence"
-            }
-
-        # Step 5: Parse current query and merge with memory context
-        parsed_query = parse_query(query, db)
-        merged_query = merge_with_last(parsed_query)
-
-        # Apply detected intent
-        if intent is not None:
-            merged_query["intent"] = intent_val
-
-        entities = merged_query.get("entities", {})
-
-        # Step 6: Check for invalid district lookup (Fuzzy match threshold check)
-        is_valid_district = entities.get("structured_is_valid_district", True)
-        if not is_valid_district:
-            raw_d = entities.get("structured_raw_district")
-            suggestions = entities.get("structured_district_suggestions") or ["Mysuru", "Mandya", "Bengaluru Urban"]
-            suggest_str = ", ".join(suggestions)
-            duration = (time.time() - start_time) * 1000
+        # Determine actual rows retrieved vs scanned for backwards compatibility if needed
+        if res.get("intent") != "PREDICT_CRIME" and "rows_scanned" not in res["metadata"]:
+            res["metadata"]["rows_scanned"] = res.get("count", 0)
+            res["metadata"]["rows_returned"] = len(res.get("results", []))
             
-            logger.warning(f"NLP LOG | Invalid district check failed: {raw_d!r} | Suggestions: {suggestions}")
-            return {
-                "success": False,
-                "intent": intent_val,
-                "summary": f"District \"{raw_d}\" not found. Did you mean: {suggest_str}?",
-                "count": 0,
-                "entities": entities,
-                "results": [],
-                "metadata": {
-                    "query": query,
-                    "suggestions": [f"Show cases in {s}" for s in suggestions],
-                    "query_time_ms": round(duration, 2),
-                    "cache_hit": False
-                },
-                "error": f"District \"{raw_d}\" not found"
-            }
-
-        # ------------------------------------------------------------------
-        # PREDICT_CRIME: bypass SQL generator and query executor entirely.
-        # ------------------------------------------------------------------
-        if intent_val == "PREDICT_CRIME":
-            from app.ai.predictor import predict_crime
-            prediction = predict_crime(db, merged_query)
-            update_state(merged_query)
-
-            duration = (time.time() - start_time) * 1000
-            
-            # Formulate prediction explanation
-            explanation = {
-                "intent": "PREDICT_CRIME",
-                "entities": {k: v for k, v in entities.items() if v is not None and not k.startswith("structured_")},
-                "reasoning": prediction.get("reasoning"),
-                "filters": [f"{k}={v}" for k, v in entities.items() if v and not k.startswith("structured_")],
-                "sql_summary": "None (Predictive OLS Model)",
-                "algorithm": prediction.get("model_used"),
-                "confidence": prediction.get("confidence"),
-                "trend_direction": prediction.get("trend"),
-                "risk_level": prediction.get("risk_level"),
-                "historical_data_used": f"{prediction.get('data_points_used')} monthly records"
-            }
-
-            predicted_count = prediction.get("predicted_cases", 0)
-            insights = IntelligenceEngine.generate_insights(db, intent_val, entities, predicted_count)
-            recs = IntelligenceEngine.generate_recommendations(intent_val, entities, predicted_count)
-
-            return {
-                "success": True,
-                "intent": "PREDICT_CRIME",
-                "summary": prediction.get("reasoning"),
-                "count": prediction.get("predicted_cases", 0),
-                "entities": entities,
-                "results": prediction.get("historical_counts", []),
-                "metadata": {
-                    "prediction": prediction,
-                    "query": query,
-                    "confidence": confidence,
-                    "query_time_ms": round(duration, 2),
-                    "cache_hit": False,
-                    "rows_scanned": prediction.get("data_points_used"),
-                    "rows_returned": 1
-                },
-                "insights": insights,
-                "recommended_queries": recs,
-                "explanation": explanation,
-                "prediction": prediction  # Frontend compatibility
-            }
-
-        # Step 7: Generate SQL using merged query
-        select_stmt = generate_select(merged_query)
-
-        # Step 8: Execute query
-        results = execute_query(db, select_stmt)
-
-        # Step 8.5: Deduplicate Accused results to avoid duplicate UI cards
-        if intent_val == "SEARCH_ACCUSED":
-            seen_names = set()
-            deduped = []
-            for r in results:
-                # r is a dict from execute_query
-                name = r.get("accused_name", "").lower()
-                if name not in seen_names:
-                    seen_names.add(name)
-                    deduped.append(r)
-            results = deduped
-
-        # Step 8.6: FIR_LOOKUP — prefer exact matches and enrich results
-        if intent_val == "FIR_LOOKUP" and entities.get("identifiers"):
-            variants = [v.lower() for v in entities["identifiers"]]
-
-            # Partition: exact-variant matches vs partial
-            exact = [r for r in results if r.get("crime_no", "").lower() in variants or r.get("case_no", "").lower() in variants or r.get("fir_no", "").lower() in variants]
-            if exact:
-                results = exact  # show only exact matches
-                
-            # If exactly one result, format as single FIR. Otherwise format as list (change intent)
-            if len(results) > 1:
-                intent_val = "SEARCH_CASES"
-
-            # Enrich each FIR result with related details
-            from sqlalchemy import text as sa_text
-            for row in results:
-                cid = row.get("case_master_id")
-                if not cid:
-                    continue
-                # Accused names
-                acc = db.execute(sa_text('SELECT "AccusedName" FROM accused WHERE "CaseMasterID" = :cid'), {"cid": cid}).fetchall()
-                row["accused_names"] = [a[0] for a in acc] if acc else []
-
-                # Victim names
-                vic = db.execute(sa_text('SELECT "VictimName" FROM victim WHERE "CaseMasterID" = :cid'), {"cid": cid}).fetchall()
-                row["victim_names"] = [v[0] for v in vic] if vic else []
-
-                # Police station name + district
-                sid = row.get("police_station_id")
-                if sid:
-                    sta = db.execute(sa_text('SELECT u."UnitName", d."DistrictName" FROM unit u LEFT JOIN district d ON u."DistrictID" = d."DistrictID" WHERE u."UnitID" = :sid'), {"sid": sid}).first()
-                    if sta:
-                        row["police_station_name"] = sta[0]
-                        row["district_name"] = sta[1]
-
-                # Investigating officer
-                oid = row.get("police_person_id")
-                if oid:
-                    off = db.execute(sa_text('SELECT "FirstName" FROM employee WHERE "EmployeeID" = :oid'), {"oid": oid}).first()
-                    if off:
-                        row["investigating_officer"] = off[0]
-
-                # Crime category
-                chid = row.get("crime_major_head_id")
-                if chid:
-                    ch = db.execute(sa_text('SELECT "CrimeGroupName" FROM crime_head WHERE "CrimeHeadID" = :chid'), {"chid": chid}).first()
-                    if ch:
-                        row["crime_category"] = ch[0]
-
-                # Status name
-                stid = row.get("case_status_id")
-                if stid:
-                    st = db.execute(sa_text('SELECT "CaseStatusName" FROM case_status_master WHERE "CaseStatusID" = :stid'), {"stid": stid}).first()
-                    if st:
-                        row["status_name"] = st[0]
-
-            # If still no results, fetch dynamic suggestions from DB
-            if not results:
-                sample = db.execute(sa_text('SELECT "CrimeNo" FROM case_master ORDER BY RANDOM() LIMIT 5')).fetchall()
-                entities["_dynamic_suggestions"] = [s[0] for s in sample]
-
-        # Persist state for next turn
-        update_state(merged_query)
-
-        # Step 8.8: In-memory pagination and total counts
-        total_count = len(results)
-        if not entities.get("limit"):
-            results = results[:20]
-
-        # Format human-friendly summary
-        try:
-            formatted = format_response(intent_val, results, entities, total_count=total_count)
-        except Exception as fe:
-            logger.error(f"Error formatting response: {fe}")
-            formatted = {
-                "summary": f"Found {len(results)} matching records.",
-                "count": total_count,
-                "results": results,
-            }
-
-        # Step 9: Post-process results with intelligence
-        # A. Case summaries for FIR rows
-        if intent_val in ["SEARCH_CASES", "SEARCH_VICTIMS"]:
-            unit_map = AnalyticsService.get_unit_map(db)
-            status_names = {
-                1: "under investigation",
-                2: "under trial",
-                3: "closed",
-                4: "under review"
-            }
-            for row in formatted["results"]:
-                if isinstance(row, dict) and "crime_no" in row:
-                    status_id = row.get("status")
-                    status_str = status_names.get(status_id, "investigation")
-                    reg_date = row.get("crime_registered_date")
-                    station_id = row.get("police_station_id")
-                    station_name = unit_map.get(station_id, "Unknown Police Station")
-                    date_str = str(reg_date) if reg_date else "Unknown Date"
-                    # Add FIR summary
-                    row["fir_summary"] = f"The case is {status_str} and was registered on {date_str} at {station_name}."
-
-        if intent_val in ["MOST_WANTED", "REPEAT_OFFENDERS"]:
-            import urllib.parse
-            for row in formatted["results"]:
-                if isinstance(row, dict):
-                    name = row.get("name", "Unknown")
-                    encoded = urllib.parse.quote(name)
-                    row["photo"] = f"https://ui-avatars.com/api/?name={encoded}&background=random"
-
-        # B. Hotspots Intelligence
-        elif intent_val == "HOTSPOT":
-            formatted["results"] = IntelligenceEngine.calculate_hotspot_intelligence(formatted["results"])
-
-        # C. Trend Analytics
-        trend_analytics = {}
-        if intent_val == "CRIME_TREND":
-            monthly_counts = AnalyticsService.get_monthly_counts(db)
-            trend_analytics = IntelligenceEngine.calculate_trend_analytics(monthly_counts)
-
-        # Step 10: Generate insights and recommendations
-        insights = IntelligenceEngine.generate_insights(db, intent_val, entities, formatted["count"])
-        recs = IntelligenceEngine.generate_recommendations(intent_val, entities, formatted["count"])
-        explanation = IntelligenceEngine.generate_explanation(intent_val, entities, select_stmt)
-
-        duration = (time.time() - start_time) * 1000
+        # Store intent in request state for middleware
+        request.state.intent = res.get("intent", "UNKNOWN")
         
-        response = {
-            "success": True,
-            "intent": intent_val,
-            "summary": formatted["summary"],
-            "count": formatted["count"],
-            "entities": entities,
-            "results": formatted["results"],
-            "metadata": {
-                "query": query,
-                "confidence": confidence,
-                "raw_results_count": len(results),
-                "query_time_ms": round(duration, 2),
-                "cache_hit": False,
-                "rows_scanned": len(results),
-                "rows_returned": len(formatted["results"]),
-                "trend_analytics": trend_analytics
-            },
-            "insights": insights,
-            "recommended_queries": recs,
-            "explanation": explanation
-        }
-
-        # Step 11: Set in cache (only for successful non-prediction requests)
-        cache_key = f"chat_{query.lower().strip()}"
-        global_cache.set(cache_key, response)
-
-        return response
-
+        return res
     except Exception as e:
-        logger.error(f"Unexpected error in chat_query: {e}", exc_info=True)
+        logger.exception(f"Unexpected error in chat_query: {e}")
         duration = (time.time() - start_time) * 1000
         return {
             "success": False,
             "intent": "UNKNOWN",
-            "summary": f"An unhandled error occurred: {str(e)}",
+            "summary": "An unexpected error occurred while processing your request.",
             "count": 0,
             "entities": {},
             "results": [],
             "metadata": {
                 "query": query,
+                "suggestions": ["Show theft cases", "Open FIR KSP-0001"],
+                "confidence": 0.0,
                 "query_time_ms": round(duration, 2),
                 "cache_hit": False
             },
-            "error": str(e)
+            "error": "Internal server error"
         }

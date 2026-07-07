@@ -8,6 +8,7 @@ from typing import Dict, Any
 _last_state: Dict[str, Any] = {
     "intent": None,
     "entities": {},
+    "results": [],
 }
 
 def get_last_state() -> Dict[str, Any]:
@@ -18,39 +19,46 @@ def get_last_state() -> Dict[str, Any]:
     """
     return {"intent": _last_state.get("intent"), "entities": _last_state.get("entities", {}).copy()}
 
-def merge_with_last(new_state: Dict[str, Any]) -> Dict[str, Any]:
+def merge_with_last(new_state: Dict[str, Any], query: str = "") -> Dict[str, Any]:
     """Merge a newly parsed query with the previously stored state.
-
-    * ``intent`` – if the new state provides a non‑null intent, it replaces the
-      previous one; otherwise the previous intent is retained.
-    * ``entities`` – for each entity, a non‑null value in the new state overrides
-      the previous value; missing/``None`` values keep the old value.
-    The function returns a new merged dict without mutating the stored state.
+    State only carries over if the user explicitly asks a follow-up query.
     """
     merged_intent = new_state.get("intent") or _last_state.get("intent")
     prev_entities = _last_state.get("entities", {})
     new_entities = new_state.get("entities", {})
     merged_entities: Dict[str, Any] = {}
-    allowed_carry_keys = {
-        "crime_head",
-        "structured_crime_type",
-        "status",
-        "date_range",
-        "year",
-        "structured_date_from",
-        "structured_date_to",
-        "structured_prediction",
-    }
+    
+    # Enhanced follow-up detection
+    import re
+    followup_patterns = r"\b(what\s+about|how\s+about|and\s+in|and\s+for|what\s+if|who\s+is|any\s+similar|open\s+(the\s+)?first|open\s+(the\s+)?last)\b"
+    is_followup = bool(re.search(followup_patterns, query.lower()))
+    
+    # If it's a completely new entity-less query and intent is missing, it might be a follow-up
+    if not new_entities and not new_state.get("intent"):
+        is_followup = True
 
     for key in set(prev_entities) | set(new_entities):
         new_val = new_entities.get(key)
         if new_val is not None:
             merged_entities[key] = new_val
+        elif is_followup:
+            merged_entities[key] = prev_entities.get(key)
         else:
-            if key in allowed_carry_keys:
-                merged_entities[key] = prev_entities.get(key)
-            else:
-                merged_entities[key] = None
+            merged_entities[key] = None
+
+    # Handle "Open the first FIR"
+    if "first" in query.lower() and merged_intent == "FIR_LOOKUP" and not merged_entities.get("identifiers"):
+        results = _last_state.get("results", [])
+        if results:
+            first_fir = results[0].get("crime_no") or results[0].get("fir_no") or results[0].get("case_no")
+            if first_fir:
+                merged_entities["identifiers"] = [first_fir]
+                
+    # Handle "Who is the accused" if no accused provided
+    if merged_intent == "SEARCH_ACCUSED" and not merged_entities.get("accused_name"):
+        # If we have a previous FIR, keep it to search accused in that FIR
+        pass # Automatically handled by keeping previous entities like identifiers
+            
     return {"intent": merged_intent, "entities": merged_entities}
 
 def update_state(state: Dict[str, Any]) -> None:
@@ -62,4 +70,5 @@ def update_state(state: Dict[str, Any]) -> None:
     _last_state = {
         "intent": state.get("intent"),
         "entities": state.get("entities", {}).copy(),
+        "results": state.get("results", [])
     }
