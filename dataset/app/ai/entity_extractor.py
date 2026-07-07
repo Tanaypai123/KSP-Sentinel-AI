@@ -80,14 +80,14 @@ class EntityExtractor:
         police_station = EntityExtractor.parse_police_station(lowered)
 
         # 4. Names
-        accused_name = EntityExtractor.parse_name(lowered, r"\baccused\s*(?:named)?\s*([a-z]+(?:\s+[a-z]+)*)")
-        victim_name = EntityExtractor.parse_name(lowered, r"\bvictim\s*(?:named)?\s*([a-z]+(?:\s+[a-z]+)*)")
+        accused_name = EntityExtractor.parse_name(lowered, r"\baccused\s*(?:named)?\s+([a-z0-9]+(?:\s+[a-z0-9]+)*)")
+        victim_name = EntityExtractor.parse_name(lowered, r"\bvictim\s*(?:named)?\s+([a-z0-9]+(?:\s+[a-z0-9]+)*)")
 
         # 5. Gender
         gender = EntityExtractor.parse_gender(lowered)
 
-        # 6. Age filters
-        age_lt, age_gt, age_eq = EntityExtractor.parse_age(lowered)
+        # 6. Generic Numeric Filters
+        numeric_filters = EntityExtractor.parse_numeric_filters(lowered)
 
         # 7. Status
         status = EntityExtractor.parse_status(lowered)
@@ -98,14 +98,17 @@ class EntityExtractor:
         # 9. Sorting
         sort = EntityExtractor.parse_sort(lowered)
 
-        # 10. Date parsing (Relative & Flexible)
+        # 10. Date parsing
         date_from, date_to = EntityExtractor.parse_dates(lowered)
 
-        # 11. Comparison operators (for trends & forecasting)
+        # 11. Comparison operators
         comparison = EntityExtractor.parse_comparison(lowered)
 
-        # 12. Prediction target indicator
+        # 12. Prediction target
         prediction = EntityExtractor.parse_prediction_indicator(lowered)
+        
+        # 13. Generic Identifier (FIR/Case)
+        identifiers = EntityExtractor.parse_identifier(lowered)
 
         return {
             "crime_type": crime_type,
@@ -117,16 +120,15 @@ class EntityExtractor:
             "accused_name": accused_name,
             "victim_name": victim_name,
             "gender": gender,
-            "age_lt": age_lt,
-            "age_gt": age_gt,
-            "age_eq": age_eq,
+            "numeric_filters": numeric_filters,
             "status": status,
             "limit": limit,
             "sort": sort,
             "date_from": date_from,
             "date_to": date_to,
             "comparison": comparison,
-            "prediction": prediction
+            "prediction": prediction,
+            "identifiers": identifiers
         }
 
     @staticmethod
@@ -160,14 +162,14 @@ class EntityExtractor:
 
         Returns (matched_name, raw_extracted_name, is_valid, list_of_suggestions).
         """
-        # Match pattern "in/from <district>"
-        pattern = r"(?:in|from|at)\s+([a-z]+(?:\s+[a-z]+)*)\b"
+        # Match pattern "in/from/at/location <district>"
+        pattern = r"(?:in|from|at|location)\s+([a-z]+(?:\s+[a-z]+)*)\b"
         matches = re.finditer(pattern, text)
         raw_dist = None
         for m in matches:
             val = m.group(1).strip()
             # Stop words filter to ensure temporal words are not matched
-            if val not in ["next", "last", "this", "month", "week", "year", "police", "accused", "victim", "cases", "theft", "murder", "assault"]:
+            if val not in ["next", "last", "this", "month", "week", "year", "police", "accused", "victim", "cases", "theft", "murder", "assault", "offender", "offenders", "criminal", "criminals", "most", "wanted"]:
                 raw_dist = val
                 break
 
@@ -242,8 +244,10 @@ class EntityExtractor:
         match = re.search(regex_pattern, text)
         if match:
             name = match.group(1).strip()
+            # Stop name at common grammatical boundaries
+            name = re.split(r"\b(in|at|from|with|who|under|above|for|and|or|having)\b", name)[0].strip()
             # Exclude grammar terms
-            if name not in ["named", "under", "above"]:
+            if name and name not in ["named", "under", "above", "with"]:
                 return name
         return None
 
@@ -257,31 +261,79 @@ class EntityExtractor:
         return None
 
     @staticmethod
-    def parse_age(text: str) -> Tuple[Optional[int], Optional[int], Optional[int]]:
-        """Extract age comparison filters (lt, gt, eq) and validate constraints within [1, 120]."""
-        # under 18 / below 18 / minor
-        if re.search(r"\bminors?\b", text):
-            return 18, None, None
-        match_lt = re.search(r"(?:under|below|less\s+than)\s+(\d+)", text)
-        if match_lt:
-            val = int(match_lt.group(1))
-            return max(1, min(val, 120)), None, None
+    def parse_numeric_filters(text: str) -> List[Dict[str, Any]]:
+        """Extract generic numeric filters mapping attributes to operators and values."""
+        filters = []
+        op_patterns = {
+            "gte": r"(?:>=)",
+            "lte": r"(?:<=)",
+            "gt":  r"(?:>|above|older\s+than|greater\s+than|over|more\s+than)",
+            "lt":  r"(?:<|under|below|less\s+than|younger\s+than)",
+            "eq":  r"(?:==|=|exact|exactly|aged?)"
+        }
+        
+        attr_patterns = {
+            "age": r"\b(?:age|years?\s+old)\b",
+            "cases": r"\b(?:cases?|firs?|crimes?)\b"
+        }
+        
+        for attr, attr_pat in attr_patterns.items():
+            for op, op_pat in op_patterns.items():
+                # Formats: attr > val OR op val attr
+                p1 = attr_pat + r"\s*" + op_pat + r"\s*(\d+)"
+                p2 = op_pat + r"\s*(\d+)\s*" + attr_pat
+                
+                for p in [p1, p2]:
+                    for m in re.finditer(p, text):
+                        filters.append({"attribute": attr, "operator": op, "value": int(m.group(1))})
+                        
+        # Implicit attribute fallback
+        for op, op_pat in op_patterns.items():
+            for m in re.finditer(op_pat + r"\s*(\d+)", text):
+                val = int(m.group(1))
+                if not any(f["value"] == val for f in filters):
+                    match_str = m.group(0)
+                    if "older" in match_str or "younger" in match_str or val < 100:
+                        # Assuming age for small numbers without explicit context if operator makes sense
+                        if "older" in match_str or "younger" in match_str or re.search(r"\baged?\s+\d+", text):
+                            filters.append({"attribute": "age", "operator": op, "value": val})
+                        elif "more" in match_str or "less" in match_str:
+                            filters.append({"attribute": "cases", "operator": op, "value": val})
 
-        # above 50 / older than 40 / adult
-        match_gt = re.search(r"(?:above|older\s+than|greater\s+than|over)\s+(\d+)", text)
-        if match_gt:
-            val = int(match_gt.group(1))
-            return None, max(1, min(val, 120)), None
-        if re.search(r"\badults?\b", text):
-            return None, 18, None
+        # Explicit minor/adult checks
+        if re.search(r"\bminors?\b", text) and not any(f["attribute"] == "age" for f in filters):
+            filters.append({"attribute": "age", "operator": "lt", "value": 18})
+        if re.search(r"\badults?\b", text) and not any(f["attribute"] == "age" for f in filters):
+            filters.append({"attribute": "age", "operator": "gte", "value": 18})
+            
+        return filters
 
-        # exact age
-        match_eq = re.search(r"(?:age|aged)\s+(\d+)", text)
-        if match_eq:
-            val = int(match_eq.group(1))
-            return None, None, max(1, min(val, 120))
-
-        return None, None, None
+    @staticmethod
+    def parse_identifier(text: str) -> Optional[List[str]]:
+        """Normalize generic FIR/Crime identifiers into an array of search candidates."""
+        match = re.search(r"(?:fir|case|crime)\s*(?:no\.?|number|id)?\s*[-#:]?\s*([a-z0-9][a-z0-9/-]*)", text, re.IGNORECASE)
+        if match:
+            raw = match.group(1)
+        else:
+            match = re.search(r"\b([a-z]+[-]?\d+)\b", text, re.IGNORECASE)
+            if match:
+                raw = match.group(1)
+            else:
+                return None
+                
+        raw_upper = raw.upper()
+        candidates = set([raw_upper, raw_upper.replace('/', '-'), raw_upper.replace('-', '/')])
+        
+        m_prefix = re.match(r"([A-Z]+)[-]?(0*)(\d+)", raw_upper)
+        if m_prefix:
+            prefix, zeros, num = m_prefix.groups()
+            candidates.add(f"{prefix}-{zeros}{num}")
+            candidates.add(f"{prefix}{zeros}{num}")
+            candidates.add(f"{prefix}-{num}")
+            candidates.add(f"{prefix}{num}")
+            candidates.add(num)
+            
+        return list(candidates)
 
     @staticmethod
     def parse_status(text: str) -> Optional[str]:

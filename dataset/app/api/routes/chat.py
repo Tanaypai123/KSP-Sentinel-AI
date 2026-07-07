@@ -74,7 +74,7 @@ def chat_query(payload: Dict[str, Any], request: Request, db: Session = Depends(
         # Step 3: Detect multiple commands
         crime_keywords = ["theft", "assault", "murder", "rape", "kidnapping", "robbery", "burglary"]
         detected_crimes = [c for c in crime_keywords if re.search(r"\b" + re.escape(c) + r"\b", query.lower())]
-        has_multiple_verbs = len(re.findall(r"\b(show|predict|trend|hotspot)\b", query.lower())) > 1
+        has_multiple_verbs = len(set(re.findall(r"\b(predict|trend|hotspot)\b", query.lower()))) > 1
         
         if len(detected_crimes) > 1 or has_multiple_verbs:
             duration = (time.time() - start_time) * 1000
@@ -175,8 +175,9 @@ def chat_query(payload: Dict[str, Any], request: Request, db: Session = Depends(
                 "historical_data_used": f"{prediction.get('data_points_used')} monthly records"
             }
 
-            insights = IntelligenceEngine.generate_insights(db, intent_val, entities)
-            recs = IntelligenceEngine.generate_recommendations(intent_val, entities)
+            predicted_count = prediction.get("predicted_cases", 0)
+            insights = IntelligenceEngine.generate_insights(db, intent_val, entities, predicted_count)
+            recs = IntelligenceEngine.generate_recommendations(intent_val, entities, predicted_count)
 
             return {
                 "success": True,
@@ -206,17 +207,95 @@ def chat_query(payload: Dict[str, Any], request: Request, db: Session = Depends(
         # Step 8: Execute query
         results = execute_query(db, select_stmt)
 
+        # Step 8.5: Deduplicate Accused results to avoid duplicate UI cards
+        if intent_val == "SEARCH_ACCUSED":
+            seen_names = set()
+            deduped = []
+            for r in results:
+                # r is a dict from execute_query
+                name = r.get("accused_name", "").lower()
+                if name not in seen_names:
+                    seen_names.add(name)
+                    deduped.append(r)
+            results = deduped
+
+        # Step 8.6: FIR_LOOKUP — prefer exact matches and enrich results
+        if intent_val == "FIR_LOOKUP" and entities.get("identifiers"):
+            variants = [v.lower() for v in entities["identifiers"]]
+
+            # Partition: exact-variant matches vs partial
+            exact = [r for r in results if r.get("crime_no", "").lower() in variants or r.get("case_no", "").lower() in variants or r.get("fir_no", "").lower() in variants]
+            if exact:
+                results = exact  # show only exact matches
+                
+            # If exactly one result, format as single FIR. Otherwise format as list (change intent)
+            if len(results) > 1:
+                intent_val = "SEARCH_CASES"
+
+            # Enrich each FIR result with related details
+            from sqlalchemy import text as sa_text
+            for row in results:
+                cid = row.get("case_master_id")
+                if not cid:
+                    continue
+                # Accused names
+                acc = db.execute(sa_text('SELECT "AccusedName" FROM accused WHERE "CaseMasterID" = :cid'), {"cid": cid}).fetchall()
+                row["accused_names"] = [a[0] for a in acc] if acc else []
+
+                # Victim names
+                vic = db.execute(sa_text('SELECT "VictimName" FROM victim WHERE "CaseMasterID" = :cid'), {"cid": cid}).fetchall()
+                row["victim_names"] = [v[0] for v in vic] if vic else []
+
+                # Police station name + district
+                sid = row.get("police_station_id")
+                if sid:
+                    sta = db.execute(sa_text('SELECT u."UnitName", d."DistrictName" FROM unit u LEFT JOIN district d ON u."DistrictID" = d."DistrictID" WHERE u."UnitID" = :sid'), {"sid": sid}).first()
+                    if sta:
+                        row["police_station_name"] = sta[0]
+                        row["district_name"] = sta[1]
+
+                # Investigating officer
+                oid = row.get("police_person_id")
+                if oid:
+                    off = db.execute(sa_text('SELECT "FirstName" FROM employee WHERE "EmployeeID" = :oid'), {"oid": oid}).first()
+                    if off:
+                        row["investigating_officer"] = off[0]
+
+                # Crime category
+                chid = row.get("crime_major_head_id")
+                if chid:
+                    ch = db.execute(sa_text('SELECT "CrimeGroupName" FROM crime_head WHERE "CrimeHeadID" = :chid'), {"chid": chid}).first()
+                    if ch:
+                        row["crime_category"] = ch[0]
+
+                # Status name
+                stid = row.get("case_status_id")
+                if stid:
+                    st = db.execute(sa_text('SELECT "CaseStatusName" FROM case_status_master WHERE "CaseStatusID" = :stid'), {"stid": stid}).first()
+                    if st:
+                        row["status_name"] = st[0]
+
+            # If still no results, fetch dynamic suggestions from DB
+            if not results:
+                sample = db.execute(sa_text('SELECT "CrimeNo" FROM case_master ORDER BY RANDOM() LIMIT 5')).fetchall()
+                entities["_dynamic_suggestions"] = [s[0] for s in sample]
+
         # Persist state for next turn
         update_state(merged_query)
 
+        # Step 8.8: In-memory pagination and total counts
+        total_count = len(results)
+        if not entities.get("limit"):
+            results = results[:20]
+
         # Format human-friendly summary
         try:
-            formatted = format_response(intent_val, results, entities)
+            formatted = format_response(intent_val, results, entities, total_count=total_count)
         except Exception as fe:
             logger.error(f"Error formatting response: {fe}")
             formatted = {
                 "summary": f"Found {len(results)} matching records.",
-                "count": len(results),
+                "count": total_count,
                 "results": results,
             }
 
@@ -241,6 +320,14 @@ def chat_query(payload: Dict[str, Any], request: Request, db: Session = Depends(
                     # Add FIR summary
                     row["fir_summary"] = f"The case is {status_str} and was registered on {date_str} at {station_name}."
 
+        if intent_val in ["MOST_WANTED", "REPEAT_OFFENDERS"]:
+            import urllib.parse
+            for row in formatted["results"]:
+                if isinstance(row, dict):
+                    name = row.get("name", "Unknown")
+                    encoded = urllib.parse.quote(name)
+                    row["photo"] = f"https://ui-avatars.com/api/?name={encoded}&background=random"
+
         # B. Hotspots Intelligence
         elif intent_val == "HOTSPOT":
             formatted["results"] = IntelligenceEngine.calculate_hotspot_intelligence(formatted["results"])
@@ -252,8 +339,8 @@ def chat_query(payload: Dict[str, Any], request: Request, db: Session = Depends(
             trend_analytics = IntelligenceEngine.calculate_trend_analytics(monthly_counts)
 
         # Step 10: Generate insights and recommendations
-        insights = IntelligenceEngine.generate_insights(db, intent_val, entities)
-        recs = IntelligenceEngine.generate_recommendations(intent_val, entities)
+        insights = IntelligenceEngine.generate_insights(db, intent_val, entities, formatted["count"])
+        recs = IntelligenceEngine.generate_recommendations(intent_val, entities, formatted["count"])
         explanation = IntelligenceEngine.generate_explanation(intent_val, entities, select_stmt)
 
         duration = (time.time() - start_time) * 1000

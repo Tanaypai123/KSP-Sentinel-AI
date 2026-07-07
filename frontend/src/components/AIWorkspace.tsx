@@ -16,7 +16,6 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
-  User,
   Shield,
   Clock,
   Compass,
@@ -1041,33 +1040,75 @@ function AccusedCardGridRaw({ results }: { results: Record<string, any>[] }) {
 
   return (
     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {results.slice(0, 4).map((acc, i) => (
-        <div
-          key={i}
-          className="rounded-2xl border border-neutral-800 bg-neutral-900/30 p-4 flex items-start space-x-3.5 hover:border-cyan-500/25 transition duration-200"
-        >
-          <div className="w-12 h-12 rounded-xl border border-neutral-800 bg-neutral-950 flex items-center justify-center text-neutral-500 flex-shrink-0">
-            <User className="w-6 h-6" />
-          </div>
+      {results.slice(0, 10).map((acc, i) => {
+        const name = acc.name || acc.accused_name || 'Unknown';
+        const photoUrl = acc.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+        const riskScore = acc.risk_score;
+        const caseCount = acc.cases || 1;
+        const crimeCategory = acc.crime_types || acc.crime_category || 'Unknown';
+        const district = acc.district || acc.district_name || 'Unknown';
+        const policeStation = acc.police_station_name || 'N/A';
+        const status = acc.status_name || 'Unknown';
+        
+        let riskColor = 'text-green-400 bg-green-500/10 border-green-500/20';
+        let riskLabel = 'LOW RISK';
+        if (riskScore >= 75 || caseCount >= 3) {
+          riskColor = 'text-rose-400 bg-rose-500/10 border-rose-500/20';
+          riskLabel = 'HIGH RISK';
+        } else if (riskScore >= 40 || caseCount > 1) {
+          riskColor = 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
+          riskLabel = 'MED RISK';
+        }
 
-          <div className="flex-1 min-w-0 space-y-1.5 text-xs">
-            <div className="flex items-start justify-between">
-              <span className="block text-sm font-bold text-white truncate max-w-[80%]">
-                {acc.accused_name}
-              </span>
-              <span className="text-xs font-mono text-neutral-550 font-bold">ID: {acc.accused_master_id}</span>
+        return (
+          <div
+            key={i}
+            className="rounded-2xl border border-neutral-800 bg-neutral-900/30 p-4 hover:border-cyan-500/25 transition duration-200 flex flex-col"
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 rounded-xl border border-neutral-800 bg-neutral-950 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
+              </div>
+
+              <div className="flex-1 min-w-0 space-y-1.5 text-xs">
+                <div className="flex items-start justify-between">
+                  <span className="block text-sm font-bold text-white truncate pr-2">
+                    {name}
+                  </span>
+                  {(riskScore !== undefined || caseCount > 1) && (
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${riskColor}`}>
+                      {riskLabel}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="text-xs font-mono text-neutral-450 space-x-2">
+                  <span>Age: {acc.age_year ?? 'Unk'}</span>
+                  <span>•</span>
+                  <span>{acc.gender_id === 1 ? 'Male' : acc.gender_id === 2 ? 'Female' : 'Unk'}</span>
+                  <span>•</span>
+                  <span>Cases: <span className="font-bold text-cyan-400">{caseCount}</span></span>
+                </div>
+              </div>
             </div>
-            <div className="text-xs font-mono text-neutral-450 space-x-2">
-              <span>Age: {acc.age_year ?? 'Unk'}</span>
-              <span>•</span>
-              <span>Gender: {acc.gender_id === 1 ? 'Male' : 'Female'}</span>
-            </div>
-            <div className="text-xs font-mono text-cyan-405 border border-neutral-850 rounded-lg px-2 py-0.5 bg-neutral-950 inline-block font-bold">
-              Case ID: {acc.case_master_id}
+
+            <div className="mt-4 pt-3 border-t border-neutral-800/60 grid grid-cols-2 gap-y-3 text-xs font-mono">
+              <div>
+                <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Crime Type</span>
+                <span className="text-neutral-300 truncate block pr-2" title={crimeCategory}>{crimeCategory}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Status</span>
+                <span className="text-neutral-300 truncate block pr-2">{status}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Location</span>
+                <span className="text-neutral-300 truncate block pr-2" title={`${district} / ${policeStation}`}>{district} {policeStation !== 'N/A' && `- ${policeStation}`}</span>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -1187,8 +1228,8 @@ function IntentResponseBlock({ payload }: { payload: BackendResponse }) {
         <CasesTable results={results} />
       )}
 
-      {/* 2. SEARCH_ACCUSED */}
-      {intent === 'SEARCH_ACCUSED' && results && (
+      {/* 2. SEARCH_ACCUSED, MOST_WANTED, REPEAT_OFFENDERS */}
+      {(intent === 'SEARCH_ACCUSED' || intent === 'MOST_WANTED' || intent === 'REPEAT_OFFENDERS') && results && (
         <AccusedCardGrid results={results} />
       )}
 

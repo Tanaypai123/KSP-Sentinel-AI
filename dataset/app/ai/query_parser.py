@@ -25,10 +25,10 @@ def parse_query(query: str, db_session: Optional[Any] = None) -> Dict[str, Any]:
     entities: Dict[str, Any] = {}
 
     # Simple mappings
+    # FIR / Identifier mapping
     entities["fir_number"] = None
-    fir_match = re.search(r"\b(ksp-\d{4,})\b", query, re.IGNORECASE)
-    if fir_match:
-        entities["fir_number"] = fir_match.group(1).upper()
+    if ext.get("identifiers"):
+        entities["identifiers"] = ext["identifiers"]
 
     entities["crime_head"] = ext["crime_type"]
     entities["district"] = ext["district"]
@@ -48,15 +48,8 @@ def parse_query(query: str, db_session: Optional[Any] = None) -> Dict[str, Any]:
     gender_map = {"male": 1, "female": 2}
     entities["gender"] = gender_map.get(ext["gender"]) if ext["gender"] else None
 
-    # Age mapping: dict structured filter expected by SQL generator
-    age_dict = {}
-    if ext["age_lt"] is not None:
-        age_dict["lt"] = ext["age_lt"]
-    if ext["age_gt"] is not None:
-        age_dict["gt"] = ext["age_gt"]
-    if ext["age_eq"] is not None:
-        age_dict["eq"] = ext["age_eq"]
-    entities["age"] = age_dict if age_dict else None
+    # Generic numeric mapping
+    entities["numeric_filters"] = ext.get("numeric_filters", [])
 
     # Mapping status names to DB ID values (1=Investigation, 2=Under Trial, 3=Closed, 4=Under Review)
     status_map = {

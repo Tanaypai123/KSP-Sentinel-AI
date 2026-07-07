@@ -75,7 +75,10 @@ export type BackendIntent =
   | 'CRIME_TREND'
   | 'HOTSPOT'
   | 'PREDICT_CRIME'
-  | 'REPORTS';
+  | 'REPORTS'
+  | 'FIR_LOOKUP'
+  | 'MOST_WANTED'
+  | 'REPEAT_OFFENDERS';
 
 export interface PredictionResult {
   predicted_cases: number;

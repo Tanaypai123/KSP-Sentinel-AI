@@ -73,8 +73,14 @@ class IntelligenceEngine:
         }
 
     @staticmethod
-    def generate_insights(db: Session, intent: str, entities: Dict[str, Any]) -> List[str]:
+    def generate_insights(db: Session, intent: str, entities: Dict[str, Any], result_count: int = 1) -> List[str]:
         """Query real database counts to formulate dynamic, data-driven analytical insights."""
+        if result_count == 0:
+            return ["Review the search tips to refine your query."]
+            
+        if intent in ["FIR_LOOKUP", "SEARCH_ACCUSED", "SEARCH_VICTIMS", "PREDICT_CRIME"]:
+            return [] # No unrelated statistics unless explicitly asked
+            
         insights = []
 
         try:
@@ -130,13 +136,48 @@ class IntelligenceEngine:
         return insights[:3]
 
     @staticmethod
-    def generate_recommendations(intent: str, entities: Dict[str, Any]) -> List[str]:
+    def generate_recommendations(intent: str, entities: Dict[str, Any], result_count: int = 1) -> List[str]:
         """Construct a list of contextually relevant recommended follow-up queries."""
+        if result_count == 0:
+            # Use dynamic suggestions if available (set by chat.py for FIR_LOOKUP)
+            dynamic = entities.get("_dynamic_suggestions", [])
+            if dynamic:
+                return [f"Show FIR {dynamic[0]}"] + [
+                    "Show accused named Raju",
+                    "Predict theft in Mysuru",
+                    "Crime trend for assault"
+                ]
+            return [
+                "Show FIR KSP-0001",
+                "Show accused named Raju",
+                "Predict theft in Mysuru",
+                "Crime trend for assault"
+            ]
+
         crime = entities.get("crime_head") or "theft"
         dist = entities.get("district") or "Mysuru"
+        fir = entities.get("fir_number") or "KSP-1001"
 
         recs = []
-        if intent == "SEARCH_CASES":
+        if intent == "FIR_LOOKUP":
+            recs.extend([
+                f"Related FIR to {fir}",
+                "Search accused",
+                "View case timeline"
+            ])
+        elif intent == "SEARCH_ACCUSED":
+            recs.extend([
+                "Related cases",
+                "Show FIR",
+                "Criminal history"
+            ])
+        elif intent == "PREDICT_CRIME":
+            recs.extend([
+                "Similar hotspots",
+                "Trends",
+                "Risk factors"
+            ])
+        elif intent == "SEARCH_CASES":
             recs.extend([
                 f"Show hotspots for {crime}",
                 f"Predict {crime} next month in {dist}",
@@ -155,12 +196,6 @@ class IntelligenceEngine:
                 f"Predict {crime} next month in {dist}",
                 f"Show hotspots for {crime} in {dist}",
                 f"Show {crime} cases"
-            ])
-        elif intent == "PREDICT_CRIME":
-            recs.extend([
-                f"Show hotspots for {crime}",
-                f"Crime trend for {crime} in {dist}",
-                f"Show {crime} cases in {dist}"
             ])
         else:
             recs.extend([

@@ -24,17 +24,23 @@ class Intent(str, Enum):
     HOTSPOT         = "HOTSPOT"
     REPORTS         = "REPORTS"
     AGGREGATE_COUNT = "AGGREGATE_COUNT"
+    FIR_LOOKUP      = "FIR_LOOKUP"
+    REPEAT_OFFENDERS = "REPEAT_OFFENDERS"
+    MOST_WANTED     = "MOST_WANTED"
 
 
 # Triggers indicating strong intent
 _STRONG_TRIGGERS = {
     Intent.PREDICT_CRIME: [r"\bpredict\b", r"\bprediction\b", r"\bforecast\b", r"\bfuture\b", r"\bnext month\b", r"\bwill crime increase\b", r"\bwill theft increase\b"],
     Intent.AGGREGATE_COUNT: [r"\bhow many\b", r"\btotal\b", r"\bcount\b", r"\bnumber of\b", r"\bnum\b", r"\baggregate\b"],
-    Intent.CRIME_TREND: [r"\btrend\b", r"\bstatistics\b", r"\bcrime\s+rate\b", r"\bcrime.*rate\b", r"top\s+crimes"],
+    Intent.CRIME_TREND: [r"\btrend\b", r"\bstatistics\b", r"\bcrime\s+rate\b", r"\bcrime.*rate\b", r"\b(?:top|highest|most\s+common|frequent)\s+(?:crime\s+categories|crimes?|categories)\b", r"crime\s+(?:distribution|breakdown|analysis|frequency)\b", r"\bcrime\s+categor(?:y|ies)\s+ranking\b"],
     Intent.HOTSPOT: [r"\bhotspots?\b", r"\bheat\s+map\b", r"\barea.*high.*crime\b"],
     Intent.SEARCH_ACCUSED: [r"\baccused\b", r"\bsuspect\b", r"\bcriminal\b", r"named\s+\w+"],
     Intent.SEARCH_VICTIMS: [r"\bvictims?\b", r"\binjured\b"],
     Intent.REPORTS: [r"\breport\b", r"\bdashboard\b"],
+    Intent.FIR_LOOKUP: [r"\bfir\b", r"\bcase\b", r"\bcrime\s+(?:no\.?|number)\b", r"\bksp-\d{4,}\b"],
+    Intent.REPEAT_OFFENDERS: [r"\brepeat\s+offender", r"\bhabitual\s+offender", r"\bserial\s+offender"],
+    Intent.MOST_WANTED: [r"\bmost\s+wanted\b", r"\bhigh\s+risk\s+accused\b"],
 }
 
 # General patterns list
@@ -72,8 +78,11 @@ _PATTERNS_TREND: List[str] = [
     r"\bstatistics\b",
     r"\bcrime\s+rate\b",
     r"\bcrime.*rate\b",
-    r"top\s+crimes",
+    r"\b(?:top|highest|most\s+common|frequent)\s+(?:crime\s+categories|crimes?|categories)\b",
+    r"\bcrime\s+(?:distribution|breakdown|analysis|frequency)\b",
+    r"\bhighest\s+crime\b",
     r"\bcrime\s+trend\b",
+    r"\bcrime\s+categor(?:y|ies)\s+ranking\b",
 ]
 
 _PATTERNS_HOTSPOT: List[str] = [
@@ -138,8 +147,34 @@ _PATTERNS_SEARCH_CASES: List[str] = [
     r"\babduction\b",
 ]
 
+_VERBS = r"(show|open|display|search|find|get|fetch|retrieve|lookup|details\s+of)"
+_PATTERNS_FIR_LOOKUP: List[str] = [
+    r"\b" + _VERBS + r"\s+(?:fir|case|crime)\b",
+    r"\bfir\b\s*(?:no\.?|number|id)?\s*[-#:]?\s*[a-z0-9][a-z0-9/-]*\b",
+    r"\bcase\b\s*(?:no\.?|number|id)?\s*[-#:]?\s*[a-z0-9][a-z0-9/-]*\b",
+    r"\bcrime\b\s+(?:no\.?|number)\s*[-#:]?\s*[a-z0-9][a-z0-9/-]*\b",
+    r"\b(?:ksp|cr|fir)-\d{2,}\b",
+]
+
+_PATTERNS_REPEAT_OFFENDERS: List[str] = [
+    r"\brepeat\s+offenders?\b",
+    r"\bhabitual\s+offenders?\b",
+    r"\bserial\s+offenders?\b",
+    r"\brecidivist\b"
+]
+
+_PATTERNS_MOST_WANTED: List[str] = [
+    r"\bmost\s+wanted\b",
+    r"\bhigh\s+risk\s+accused\b",
+    r"\btop\s+criminals?\b",
+    r"\bmost\s+dangerous\b"
+]
+
 _PATTERN_MAP: Dict[Intent, List[str]] = OrderedDict([
+    (Intent.FIR_LOOKUP,      _PATTERNS_FIR_LOOKUP),
     (Intent.PREDICT_CRIME,   _PATTERNS_PREDICT),
+    (Intent.REPEAT_OFFENDERS, _PATTERNS_REPEAT_OFFENDERS),
+    (Intent.MOST_WANTED,      _PATTERNS_MOST_WANTED),
     (Intent.AGGREGATE_COUNT, _PATTERNS_AGGREGATE),
     (Intent.CRIME_TREND,     _PATTERNS_TREND),
     (Intent.HOTSPOT,         _PATTERNS_HOTSPOT),
@@ -155,61 +190,70 @@ _COMPILED: Dict[Intent, re.Pattern] = {
 }
 
 
+def predict_intent(text: str) -> Intent:
+    """Predict the intent using semantic scoring based on regex triggers."""
+    text_lower = text.lower()
+    scores: Dict[Intent, float] = {intent: 0.0 for intent in Intent}
+
+    # Apply strong trigger weights
+    for intent, patterns in _STRONG_TRIGGERS.items():
+        for p in patterns:
+            if re.search(p, text_lower):
+                scores[intent] += 10.0
+
+    # Apply general pattern weights
+    for intent, pattern_list in _PATTERN_MAP.items():
+        for p in pattern_list:
+            if re.search(p, text_lower):
+                scores[intent] += 1.0
+                
+    # Select highest scoring intent
+    best_intent = max(scores, key=scores.get)
+    if scores[best_intent] > 0:
+        return best_intent
+
+    return Intent.SEARCH_CASES
+
+
 def classify_intent_with_confidence(text: str) -> Tuple[Optional[Intent], float]:
     """Classify user query intent and estimate confidence score (0.0 to 1.0)."""
     lowered = text.lower().strip()
     if not lowered:
         return None, 0.0
 
-    matched_intent = None
-    # Find first matching regex pattern in order of priority
-    for intent, regex in _COMPILED.items():
-        if regex.search(lowered):
-            matched_intent = intent
-            break
+    scores: Dict[Intent, float] = {intent: 0.0 for intent in Intent}
 
-    if not matched_intent:
+    # 1. Apply strong trigger weights
+    for intent, patterns in _STRONG_TRIGGERS.items():
+        for p in patterns:
+            if re.search(p, lowered):
+                scores[intent] += 0.8
+
+    # 2. Apply general pattern weights
+    for intent, pattern_list in _PATTERN_MAP.items():
+        for p in pattern_list:
+            if re.search(p, lowered):
+                scores[intent] += 0.4
+                
+    # Extra points for action verbs if generic
+    if re.search(r"\b(show|list|find|get|search)\b", lowered):
+        scores[Intent.SEARCH_CASES] += 0.2
+
+    best_intent = max(scores, key=scores.get)
+    best_score = scores[best_intent]
+
+    if best_score == 0:
         return Intent.SEARCH_CASES, 0.40
-
-    # Calculate confidence scoring rules
-    # 1. Start with baseline
-    confidence = 0.50
-
-    # 2. Check strong trigger match
-    strong_triggers = _STRONG_TRIGGERS.get(matched_intent, [])
-    has_strong_trigger = False
-    for pattern in strong_triggers:
-        if re.search(pattern, lowered):
-            has_strong_trigger = True
-            break
-            
-    if has_strong_trigger:
-        confidence += 0.40
-    else:
-        # Extra points for action verbs if matching search cases
-        if matched_intent == Intent.SEARCH_CASES:
-            if re.search(r"\b(show|list|find|get|search)\b", lowered):
-                confidence += 0.35
-            elif re.search(r"\b(theft|murder|assault|rape|kidnapping|robbery|burglary)\b", lowered):
-                confidence += 0.20
-            else:
-                confidence -= 0.10
-
-    # 3. Adjust score based on length of search terms (density check)
+        
+    confidence = min(0.95, best_score)
+    
     words = lowered.split()
     if len(words) <= 1:
-        # Single word query is highly ambiguous
         confidence = max(0.40, confidence - 0.20)
     elif len(words) >= 4:
         confidence = min(1.0, confidence + 0.10)
-
-    # Hard-code specific query adjustments to pass confidence checks exactly
-    if matched_intent == Intent.SEARCH_CASES and not re.search(r"\b(show|list|find|get|search|theft|murder|assault|rape|kidnapping|robbery|burglary)\b", lowered):
-        confidence = min(0.50, confidence)
-
-    # Ensure bounds
-    confidence = max(0.0, min(1.0, confidence))
-    return matched_intent, round(confidence, 2)
+        
+    return best_intent, round(confidence, 2)
 
 
 def classify_intent(text: str) -> Optional[Intent]:

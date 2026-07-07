@@ -38,11 +38,61 @@ from app.models.masters import District, Unit
 # attributes/relationships listed in the compatibility report.
 # ---------------------------------------------------------------------------
 
+def _normalize_fir_variants(raw: str) -> list:
+    """Generate plausible DB-format variants for a user-supplied FIR identifier.
+
+    The KSP database uses zero-padded crime numbers like ``KSP-0001`` (4-digit)
+    and ``KSP-000051`` (6-digit).  Users commonly omit the zero-padding.
+    This function expands e.g. ``KSP-1`` into ``[KSP-1, KSP-0001, KSP-000001]``
+    so the SQL ``OR`` can match whichever format exists.
+    """
+    import re as _re
+    raw = raw.strip()
+    variants = {raw}  # always include the literal value
+
+    # If the value has a prefix like KSP-, split it and zero-pad the numeric part
+    prefix_match = _re.match(r"^([A-Z]{2,4})-(\d+)$", raw, _re.IGNORECASE)
+    if prefix_match:
+        prefix = prefix_match.group(1).upper()
+        num = prefix_match.group(2)
+        # Generate 4-digit and 6-digit zero-padded variants
+        for width in (4, 6):
+            variants.add(f"{prefix}-{num.zfill(width)}")
+        # Also add the un-padded version
+        variants.add(f"{prefix}-{num}")
+    else:
+        # Pure numeric input like "1001" or "1"
+        pure_num = _re.sub(r"[^0-9]", "", raw)
+        if pure_num:
+            variants.add(f"KSP-{pure_num.zfill(4)}")
+            variants.add(f"KSP-{pure_num.zfill(6)}")
+            variants.add(pure_num)  # partial match
+
+    return list(variants)
+
+
 def _filter_fir_number(stmt, value):
-    """Filter by FIR number (crime_no)."""
+    """Filter by FIR number, searching across crime_no AND case_no.
+
+    Generates normalized zero-padded variants so user input like ``KSP-1``
+    matches ``KSP-0001`` or ``KSP-000001`` in the database.
+    """
     if not value or not str(value).strip():
         return stmt
-    return stmt.where(CaseMaster.crime_no.ilike(f"%{str(value).strip()}%"))
+
+    variants = _normalize_fir_variants(str(value))
+
+    # Build OR conditions: exact matches first, then partial ILIKE
+    conditions = []
+    for v in variants:
+        conditions.append(CaseMaster.crime_no.ilike(v))
+        conditions.append(CaseMaster.case_no.ilike(v))
+    # Also add a wildcard partial match on the raw value
+    raw = str(value).strip()
+    conditions.append(CaseMaster.crime_no.ilike(f"%{raw}%"))
+    conditions.append(CaseMaster.case_no.ilike(f"%{raw}%"))
+
+    return stmt.where(or_(*conditions))
 
 def _filter_crime_head(stmt, value):
     """Filter by major crime head name."""
@@ -132,21 +182,28 @@ def _filter_gender(stmt, value):
         return stmt
     return stmt.where(Victim.gender_id == gid)
 
-def _filter_age(stmt, value):
-    """Filter by victim age."""
-    if not value:
+def _filter_numeric_filters(stmt, value, model=Victim):
+    """Filter by generic numeric conditions (age, etc). Defaults to Victim for cases."""
+    if not value or not isinstance(value, list):
         return stmt
 
-    if isinstance(value, dict):
-        if "lt" in value:
-            return stmt.where(Victim.age_year < int(value["lt"]))
-        if "gt" in value:
-            return stmt.where(Victim.age_year > int(value["gt"]))
-        if "eq" in value:
-            return stmt.where(Victim.age_year == int(value["eq"]))
-        return stmt
-
-    return stmt.where(Victim.age_year == int(value))
+    for f in value:
+        attr = f.get("attribute")
+        op = f.get("operator")
+        val = f.get("value")
+        
+        col = None
+        if attr == "age" and hasattr(model, "age_year"):
+            col = model.age_year
+            
+        if col is not None:
+            if op == "gt": stmt = stmt.where(col > val)
+            elif op == "lt": stmt = stmt.where(col < val)
+            elif op == "gte": stmt = stmt.where(col >= val)
+            elif op == "lte": stmt = stmt.where(col <= val)
+            elif op == "eq": stmt = stmt.where(col == val)
+            
+    return stmt
 
 def _filter_status(stmt, value):
     """Filter by case status ID."""
@@ -196,7 +253,7 @@ ENTITY_FILTERS: Dict[str, Callable[[Any, Any], Any]] = {
     "date_range": _filter_date_range,
     "year": _filter_year,
     "gender": _filter_gender,
-    "age": _filter_age,
+    "numeric_filters": _filter_numeric_filters,
     "status": _filter_status,
     "latitude": _filter_latitude,
     "longitude": _filter_longitude,
@@ -266,8 +323,15 @@ def _apply_sort_and_pagination(stmt, entities: Dict[str, Any], intent: str):
             if column is not None:
                 stmt = stmt.order_by(column.asc() if sort_order == "asc" else column.desc())
         else:
-            if intent in {"SEARCH_CASES", "SEARCH_ACCUSED", "SEARCH_VICTIMS"}:
+            if intent in {"SEARCH_CASES", "FIR_LOOKUP"}:
                 stmt = stmt.order_by(CaseMaster.crime_registered_date.desc())
+            elif intent == "SEARCH_ACCUSED":
+                if entities.get("accused_name"):
+                    stmt = stmt.order_by(func.similarity(Accused.accused_name, entities["accused_name"]).desc())
+                else:
+                    stmt = stmt.order_by(Accused.accused_master_id.desc())
+            elif intent == "SEARCH_VICTIMS":
+                stmt = stmt.order_by(Victim.victim_master_id.desc())
     # Pagination handling
     limit = entities.get("limit")
     offset = entities.get("offset")
@@ -296,8 +360,13 @@ def generate_select(parsed_query: Dict[str, Any]):
     # -------------------------------------------------------------------
     # Intent‑specific base statements
     # -------------------------------------------------------------------
-    if intent == "SEARCH_CASES":
+    if intent in {"SEARCH_CASES", "FIR_LOOKUP"}:
         stmt = select(CaseMaster)
+        
+        # Override FIR lookup filter to use the robust identifiers list if available
+        if intent == "FIR_LOOKUP" and entities.get("identifiers"):
+            entities["fir_number"] = entities["identifiers"]
+            
         stmt = _apply_entity_filters(stmt, entities)
         stmt = stmt.options(
             selectinload(CaseMaster.police_station),
@@ -309,11 +378,28 @@ def generate_select(parsed_query: Dict[str, Any]):
 
     if intent == "SEARCH_ACCUSED":
         stmt = select(Accused)
-        # Apply accused‑specific filter directly.
+        # Apply accused‑specific filters directly on the Accused model.
+        if entities.get("numeric_filters"):
+            stmt = _filter_numeric_filters(stmt, entities["numeric_filters"], Accused)
+            
         if entities.get("accused_name"):
-            stmt = stmt.where(Accused.accused_name.ilike(entities["accused_name"]))
-        # For any case‑level filters, join back to CaseMaster only once.
-        case_entities = {k: v for k, v in entities.items() if k not in {"accused_name", "victim_name", "complainant_name"}}
+            term = entities["accused_name"]
+            stmt = stmt.where(
+                or_(
+                    Accused.accused_name.ilike(f"%{term}%"),
+                    func.similarity(Accused.accused_name, term) > 0.15
+                )
+            )
+        if entities.get("gender"):
+            try:
+                stmt = stmt.where(Accused.gender_id == int(entities["gender"]))
+            except (ValueError, TypeError):
+                pass
+
+        # For any case‑level filters (district, crime_head, status, date, etc.),
+        # join back to CaseMaster. Exclude accused-specific keys already handled above.
+        _accused_direct_keys = {"accused_name", "victim_name", "complainant_name", "gender", "age"}
+        case_entities = {k: v for k, v in entities.items() if k not in _accused_direct_keys}
         if any(case_entities.values()):
             stmt = stmt.join(Accused.case_master)
             stmt = _apply_entity_filters(stmt, case_entities)
@@ -329,10 +415,10 @@ def generate_select(parsed_query: Dict[str, Any]):
             stmt = stmt.where(Victim.victim_name.ilike(f"%{entities['victim_name']}%"))
         if entities.get("gender"):
             stmt = stmt.where(Victim.gender_id == entities["gender"])
-        if entities.get("age"):
-            stmt = _filter_age(stmt, entities["age"])
+        if entities.get("numeric_filters"):
+            stmt = _filter_numeric_filters(stmt, entities["numeric_filters"], Victim)
         # Case‑level filters (exclude victim‑specific keys)
-        case_entities = {k: v for k, v in entities.items() if k not in {"victim_name", "gender", "age", "accused_name", "complainant_name"}}
+        case_entities = {k: v for k, v in entities.items() if k not in {"victim_name", "gender", "numeric_filters", "accused_name", "complainant_name"}}
         if any(case_entities.values()):
             stmt = stmt.join(Victim.case_master)
             stmt = _apply_entity_filters(stmt, case_entities)
@@ -372,6 +458,43 @@ def generate_select(parsed_query: Dict[str, Any]):
         # Order by hotspot count descending and apply pagination.
         stmt = stmt.order_by(func.count(CaseMaster.case_master_id).desc())
         stmt = _apply_sort_and_pagination(stmt, entities, intent)
+        return stmt
+
+    if intent in {"REPEAT_OFFENDERS", "MOST_WANTED"}:
+        stmt = (
+            select(
+                Accused.accused_name.label("name"),
+                func.count(CaseMaster.case_master_id).label("cases"),
+                func.least(99, func.coalesce(func.sum(CaseMaster.crime_major_head_id), 1) * 15).label("risk_score"),
+                func.coalesce(func.string_agg(CrimeHead.crime_group_name, ', '), 'Unknown').label("crime_types"),
+                func.max(CaseMaster.crime_registered_date).label("last_seen"),
+                func.max(District.district_name).label("district")
+            )
+            .join(CaseMaster, Accused.case_master_id == CaseMaster.case_master_id)
+            .join(CrimeHead, CaseMaster.crime_major_head_id == CrimeHead.crime_head_id, isouter=True)
+            .join(Unit, CaseMaster.police_station_id == Unit.unit_id, isouter=True)
+            .join(District, Unit.district_id == District.district_id, isouter=True)
+            .group_by(Accused.accused_name)
+        )
+        
+        # In our demo DB everyone has 1 case, so REPEAT_OFFENDERS having count > 1 returns empty (correct logic)
+        if intent == "REPEAT_OFFENDERS":
+            stmt = stmt.having(func.count(CaseMaster.case_master_id) > 1)
+            
+        # Sort using: 1. Highest crime count, 2. Highest risk score, 3. Recent activity
+        stmt = stmt.order_by(
+            func.count(CaseMaster.case_master_id).desc(),
+            func.least(99, func.coalesce(func.sum(CaseMaster.crime_major_head_id), 1) * 15).desc(),
+            func.max(CaseMaster.crime_registered_date).desc()
+        )
+        
+        # Apply pagination/limit directly
+        limit = entities.get("limit")
+        if limit:
+            try:
+                stmt = stmt.limit(int(limit))
+            except Exception:
+                pass
         return stmt
 
     if intent == "AGGREGATE_COUNT":

@@ -142,7 +142,17 @@ TEST_CASES = [
     ("Predict assault next month in Mysore", Intent.PREDICT_CRIME, "assault", {"district": "Mysuru"}),
     ("Show theft cases after July 2025 in Bangalore", Intent.SEARCH_CASES, "theft", {"district": "Bengaluru Urban", "date_after": "2025-07-01"}),
     ("Show theft cases below 18 sorted by newest", Intent.SEARCH_CASES, "theft", {"age_lt": 18, "sort": "desc"}),
-    ("How many closed cases in Mysore", Intent.AGGREGATE_COUNT, None, {"district": "Mysuru", "status": 3})
+    ("How many closed cases in Mysore", Intent.AGGREGATE_COUNT, None, {"district": "Mysuru", "status": 3}),
+
+    # --- 106-115: Typo & Formatting Regressions ---
+    ("show fir 1001", Intent.FIR_LOOKUP, None, {"fir_number_exists": True}),
+    ("SHOW FIR 1001", Intent.FIR_LOOKUP, None, {"fir_number_exists": True}),
+    ("show   FIR    1001", Intent.FIR_LOOKUP, None, {"fir_number_exists": True}),
+    ("show fir no 1001", Intent.FIR_LOOKUP, None, {"fir_number_exists": True}),
+    ("show crime no 120/2026", Intent.FIR_LOOKUP, None, {"fir_number_exists": True}),
+    ("Accused 980 A", Intent.SEARCH_ACCUSED, None, {"accused_name_exists": True}),
+    ("Accused with theft cases", Intent.SEARCH_ACCUSED, None, {"accused_name_exists": False}),
+    ("Location Mysuru", Intent.SEARCH_CASES, None, {"district": "Mysuru"}),
 ]
 
 print("=" * 85)
@@ -251,6 +261,19 @@ for i, (query, expected_intent, expected_crime, checks) in enumerate(TEST_CASES,
         if checks.get("gender") and entities.get("gender") != checks["gender"]:
             case_passed = False
             reasons.append(f"Expected gender ID {checks['gender']}, got {entities.get('gender')}")
+            
+        # Check explicit entity presence
+        if "fir_number_exists" in checks:
+            val = checks["fir_number_exists"]
+            if bool(entities.get("fir_number")) != val:
+                case_passed = False
+                reasons.append(f"Expected fir_number_exists={val}")
+
+        if "accused_name_exists" in checks:
+            val = checks["accused_name_exists"]
+            if bool(entities.get("accused_name")) != val:
+                case_passed = False
+                reasons.append(f"Expected accused_name_exists={val}")
 
     if case_passed:
         passed += 1
