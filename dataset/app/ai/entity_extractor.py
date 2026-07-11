@@ -61,8 +61,8 @@ _CRIME_ALIASES = {
     "murder": ["homicide", "killed", "murder", "killing"],
     "rape": ["rape", "sexual assault"],
     "kidnapping": ["abduct", "kidnapping", "missing child", "abduction", "kidnap"],
-    "fraud": ["fraud", "cheating", "scam", "online fraud", "cyber fraud"],
     "cyber_crime": ["cyber crime", "online scam", "cyber fraud", "internet crime", "hacking", "phishing"],
+    "fraud": ["fraud", "cheating", "scam", "online fraud", "cyber fraud"],
     "narcotics": ["drugs", "narcotics", "weed", "cocaine", "smuggling", "drug offence"],
     "domestic_violence": ["domestic violence", "dowry", "wife beating", "cruelty by husband"],
     "traffic": ["traffic", "accident", "hit and run", "rash driving"],
@@ -228,7 +228,7 @@ class EntityExtractor:
                 break
                 
         if not raw_dist:
-            pattern = r"(?:in|from|at|near|of|district)\s+([a-z]+(?:\s+[a-z]+)*)\b"
+            pattern = r"\b(?:in|from|at|near|of|district)\s+([a-z]+(?:\s+[a-z]+)*)\b"
             matches = re.finditer(pattern, text)
             for m in matches:
                 val = m.group(1).strip()
@@ -269,9 +269,21 @@ class EntityExtractor:
 
     @staticmethod
     def parse_police_station(text: str) -> Optional[str]:
-        """Extract police station name patterns."""
-        match = re.search(r"(?:in|from|at)\s+([a-z]+(?:\s+[a-z]+)*)\s+police\s+station", text)
-        return match.group(1).strip() if match else None
+        """Extract police station name patterns.
+        
+        Returns the full name including 'police station' suffix, e.g. 'hebbal police station'.
+        """
+        # Pattern 1: explicit "police station" phrase
+        match = re.search(r"(?:in|from|at)\s+([a-z]+(?:\s+[a-z]+)*?)\s+police\s+station", text)
+        if match:
+            return f"{match.group(1).strip()} police station"
+        
+        # Pattern 2: single-word station name before "police station" anywhere in text
+        match = re.search(r"([a-z]+)\s+police\s+station", text)
+        if match:
+            return f"{match.group(1).strip()} police station"
+
+        return None
 
     @staticmethod
     def parse_name(text: str, regex_pattern: str) -> Optional[str]:
@@ -347,31 +359,91 @@ class EntityExtractor:
     def parse_identifier(text: str) -> Optional[List[str]]:
         """Normalize generic FIR/Crime identifiers into an array of search candidates."""
         # Match explicit prefixes (FIR No, Case Number, etc.) followed by an identifier
-        match = re.search(r"\b(?:fir|case|crime)\s+(?:no\.?|number|id)?\s*[-#:]?\s*([A-Z0-9]+[-\s/][A-Z0-9]+|\d+)\b", text, re.IGNORECASE)
+        # Restrict the prefix letters to KSP/FIR/CASE/CRIME/NO to avoid false positives like 'details for'
+        match = re.search(
+            r"\b(?:fir|case|crime)\s+(?:no\.?|number|id)?\s*[-#:]?\s*\b([A-Z]{2,5}[-\s/]?\d+(?:[-\s/]\d+)*|\d+(?:[\s/]\d+)+|\d+)\b",
+            text,
+            re.IGNORECASE
+        )
         if match:
             raw = match.group(1)
         else:
             # Fallback to matching standalone common patterns:
-            # 1. KSP-123, KSP 123, or KSP123
+            # 1. KSP-123, KSP 123, or KSP123 (requiring digits to avoid matching stop words)
             # 2. 123/2026
             # 3. 000123 (pure numeric but could be ID, we will grab the first standalone 4+ digit number or slashed string)
-            match = re.search(r"\b([A-Z]{2,5}[-\s]?\d+|\d+/\d+|\d{4,})\b", text, re.IGNORECASE)
+            # Restrict alphabetical prefix to KSP to avoid matching generic words like 'for'
+            match = re.search(
+                r"\b(KSP[-\s/]?\d+(?:[-\s/]\d+)*|\d+/\d+|\d{4,})\b",
+                text,
+                re.IGNORECASE
+            )
             if match:
                 raw = match.group(1)
             else:
                 return None
-                
+
         # Normalize raw string: remove spaces
         raw = re.sub(r"\s+", "", raw)
-                
-        # Parse into a canonical list of variants
-        variants = []
         raw_upper = raw.upper()
-        variants.append(raw_upper)
         
-        # Check for strict formats like KSP-0001 or KSP0001
-        m_prefix = re.match(r"([A-Z]+)[-]?(0*)(\d+)", raw_upper)
-        if m_prefix:
+        variants = [raw_upper]
+
+        # Pattern A: PREFIX-YEAR-NUMBER (e.g. KSP-2024-0001, KSP2024-0001, KSP20240001)
+        # The year is assumed to be a 4-digit number starting with 20 or 19
+        m_yr_num = re.match(r"^([A-Z]+)[-]?(20\d{2}|19\d{2})[-]?(\d+)$", raw_upper)
+        if m_yr_num:
+            prefix, year, num = m_yr_num.groups()
+            num_int = str(int(num))
+            variants.extend([
+                f"{prefix}-{num}",
+                f"{prefix}{num}",
+                f"{prefix}-{num.zfill(4)}",
+                f"{prefix}-{num.zfill(6)}",
+                f"{prefix}-{year}-{num}",
+                f"{prefix}{year}{num}",
+                num,
+                num_int,
+                f"KSP-{num.zfill(4)}"
+            ])
+        
+        # Pattern B: PREFIX-NUMBER-YEAR (e.g. KSP-0001-2024, KSP-0001/2024)
+        m_num_yr = re.match(r"^([A-Z]+)[-]?(\d+)[-/]?(20\d{2}|19\d{2})$", raw_upper)
+        if m_num_yr:
+            prefix, num, year = m_num_yr.groups()
+            num_int = str(int(num))
+            variants.extend([
+                f"{prefix}-{num}",
+                f"{prefix}{num}",
+                f"{prefix}-{num.zfill(4)}",
+                f"{prefix}-{num.zfill(6)}",
+                f"{prefix}-{num}-{year}",
+                num,
+                num_int,
+                f"KSP-{num.zfill(4)}"
+            ])
+
+        # Pattern C: NUMBER/YEAR (e.g. 120/2026, 120-2026)
+        m_slash_yr = re.match(r"^(\d+)[-/]?(20\d{2}|19\d{2})$", raw_upper)
+        if m_slash_yr:
+            num, year = m_slash_yr.groups()
+            num_int = str(int(num))
+            variants.extend([
+                f"{num_int}/{year}",
+                f"{num}/{year}",
+                f"{num_int}-{year}",
+                f"{num}-{year}",
+                num,
+                num_int,
+                f"KSP-{num.zfill(4)}",
+                f"KSP-{num.zfill(6)}",
+                f"KSP-{num_int.zfill(4)}"
+            ])
+
+        # Standard prefix check for PREFIX-NUMBER (e.g. KSP-0001, KSP0001)
+        # where the number is not followed/preceded by another 4-digit year block
+        m_prefix = re.match(r"^([A-Z]+)[-]?(0*)(\d+)$", raw_upper)
+        if m_prefix and not m_yr_num and not m_num_yr:
             prefix, zeros, num = m_prefix.groups()
             variants.extend([
                 f"{prefix}-{zeros}{num}",
@@ -379,25 +451,33 @@ class EntityExtractor:
                 f"{prefix}-{num}",
                 f"{prefix}{num}",
                 f"{prefix}-{num.zfill(4)}",
-                f"{prefix}-{num.zfill(6)}"
+                f"{prefix}-{num.zfill(6)}",
+                num,
+                str(int(num)),
+                f"KSP-{num.zfill(4)}"
             ])
-            
-        # Check for slashes (e.g. 120/2026)
-        if "/" in raw_upper:
-            variants.append(raw_upper.replace("/", "-"))
-        elif "-" in raw_upper and re.match(r"\d+-\d+", raw_upper):
-            variants.append(raw_upper.replace("-", "/"))
-            
+
         # Ensure we always include the pure numeric part if applicable
         num_match = re.search(r"\b(\d+)\b", raw_upper)
         if num_match:
             pure_num = num_match.group(1)
-            variants.append(pure_num)
-            variants.append(f"KSP-{pure_num.zfill(4)}")
-            variants.append(f"KSP-{pure_num.zfill(6)}")
+            pure_num_int = str(int(pure_num))
+            variants.extend([
+                pure_num,
+                pure_num_int,
+                f"KSP-{pure_num.zfill(4)}",
+                f"KSP-{pure_num.zfill(6)}",
+                f"KSP-{pure_num_int.zfill(4)}"
+            ])
 
-        # Return unique list
-        return list(set(variants))
+        # deduplicate variants
+        unique_variants = []
+        seen = set()
+        for v in variants:
+            if v not in seen:
+                seen.add(v)
+                unique_variants.append(v)
+        return unique_variants
 
     @staticmethod
     def parse_act(text: str) -> Optional[str]:

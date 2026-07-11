@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import type { Message, BackendResponse, PredictionResult } from '../types';
 import { sendChatMessage } from '../services/chatService';
+import api from '../services/api';
 import { t } from '../services/i18n';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -94,7 +95,7 @@ export function StreamedText({ text, speed = 8, onComplete, onUpdate }: Streamed
     };
   }, [safeText, speed, onComplete, onUpdate]);
 
-  return <span className="font-sans text-sm md:text-base leading-relaxed text-neutral-250">{displayedText}</span>;
+  return <span className="font-sans text-sm md:text-base leading-relaxed text-neutral-250 whitespace-pre-wrap">{displayedText}</span>;
 }
 
 // ---------------------------------------------------------------------------
@@ -1338,6 +1339,67 @@ const FIRLookupDossier = memo(FIRLookupDossierRaw);
 // ---------------------------------------------------------------------------
 // Main IntentResponseBlock Orchestrator
 // ---------------------------------------------------------------------------
+// Custom Lightweight Components
+// ---------------------------------------------------------------------------
+function VictimCard({ payload }: { payload: BackendResponse }) {
+  const summary = payload.summary || "No victim information available.";
+  return (
+    <div className="p-4 rounded-xl border border-cyan-500/20 bg-cyan-950/10 shadow-sm mt-2">
+       <div className="flex items-center space-x-2 text-cyan-400 mb-2">
+         <Users className="w-4 h-4" />
+         <span className="text-xs font-mono uppercase font-bold tracking-wider">Victim Profile</span>
+       </div>
+       <div className="text-sm text-neutral-300 font-sans leading-relaxed whitespace-pre-wrap">
+         {summary}
+       </div>
+    </div>
+  );
+}
+
+function StatusBadge({ payload }: { payload: BackendResponse }) {
+  const summary = payload.summary || "No status available.";
+  return (
+    <div className="mt-2 inline-flex items-center space-x-2 px-4 py-2 rounded-lg border border-purple-500/30 bg-purple-950/20 shadow-sm">
+       <Activity className="w-4 h-4 text-purple-400" />
+       <span className="text-sm font-semibold text-purple-200">{summary}</span>
+    </div>
+  );
+}
+
+function LocationBadge({ payload, icon: Icon, title }: { payload: BackendResponse, icon: any, title?: string }) {
+  const summary = payload.summary || "Information unavailable.";
+  return (
+    <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-950/10 shadow-sm mt-2">
+       {title && (
+         <div className="flex items-center space-x-2 text-emerald-400 mb-2">
+           <Icon className="w-4 h-4" />
+           <span className="text-xs font-mono uppercase font-bold tracking-wider">{title}</span>
+         </div>
+       )}
+       {!title && (
+         <Icon className="w-4 h-4 text-emerald-400 inline-block mr-2" />
+       )}
+       <span className="text-sm text-neutral-300 font-sans leading-relaxed whitespace-pre-wrap">{summary}</span>
+    </div>
+  );
+}
+
+function NetworkSummaryCard({ payload }: { payload: BackendResponse }) {
+  const summary = payload.summary || "No network information available.";
+  return (
+    <div className="mt-3 p-5 rounded-2xl border border-blue-500/20 bg-blue-950/10 shadow-md">
+       <div className="flex items-center space-x-2 text-blue-400 mb-3 border-b border-blue-500/10 pb-2">
+         <Activity className="w-5 h-5" />
+         <span className="text-xs font-mono uppercase font-bold tracking-wider">Investigation Network Analysis</span>
+       </div>
+       <div className="text-sm text-neutral-300 font-sans leading-relaxed whitespace-pre-wrap">
+         {summary}
+       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 function IntentResponseBlock({ payload, onQueryAction }: { payload: BackendResponse; onQueryAction?: (q: string) => void }) {
   const { intent, count, results, prediction, summary, insights } = payload;
   const rawCount = count ?? (results ? results.length : 0);
@@ -1345,8 +1407,29 @@ function IntentResponseBlock({ payload, onQueryAction }: { payload: BackendRespo
   return (
     <ErrorBoundary>
       <div className="space-y-4">
+        {/* Context specific UI for active FIR follow-ups */}
+        {intent === 'SEARCH_VICTIMS' && payload.summary && payload.summary.includes("victims") && (
+          <VictimCard payload={payload} />
+        )}
+        
+        {intent === 'SEARCH_POLICE_STATION' && (
+          <LocationBadge payload={payload} icon={Shield} title="Police Station Jurisdiction" />
+        )}
+        
+        {intent === 'SEARCH_LOCATION' && (
+          <LocationBadge payload={payload} icon={MapPin} title="Incident District" />
+        )}
+        
+        {intent === 'SEARCH_OFFICER' && (
+          <LocationBadge payload={payload} icon={User} title="Investigating Officer" />
+        )}
+        
+        {intent === 'NETWORK_ANALYSIS' && (
+          <NetworkSummaryCard payload={payload} />
+        )}
+
         {/* 1. SEARCH_CASES or SEARCH_VICTIMS */}
-        {(intent === 'SEARCH_CASES' || intent === 'SEARCH_VICTIMS') && Array.isArray(results) && (
+        {(intent === 'SEARCH_CASES' || intent === 'SEARCH_VICTIMS') && Array.isArray(results) && !(intent === 'SEARCH_VICTIMS' && payload.summary && payload.summary.includes("victims")) && (
           <CasesTable records={results} />
         )}
 
@@ -1361,24 +1444,30 @@ function IntentResponseBlock({ payload, onQueryAction }: { payload: BackendRespo
         )}
 
       {/* 3. AGGREGATE_COUNT */}
-      {intent === 'AGGREGATE_COUNT' && (
-        <AggregateCard count={rawCount} entities={payload.entities} />
+      {intent === 'AGGREGATE_COUNT' && payload.summary && payload.summary.includes("investigation status") ? (
+        <StatusBadge payload={payload} />
+      ) : (
+        intent === 'AGGREGATE_COUNT' && <AggregateCard count={rawCount} entities={payload.entities} />
       )}
 
       {/* 4. CRIME_TREND */}
-      {intent === 'CRIME_TREND' && results && (
-        <div className="mt-3 rounded-2xl border border-purple-500/20 bg-purple-950/5 p-5 space-y-4 shadow-[0_4px_25px_rgba(168,85,247,0.05)]">
-          <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5">
-            <div className="flex items-center space-x-2">
-              <BarChart3 className="w-5 h-5 text-purple-400" />
-              <span className="text-xs font-mono font-bold tracking-wider text-purple-400 uppercase">
-                Crime Trend Analytics
-              </span>
+      {intent === 'CRIME_TREND' && payload.summary && payload.summary.includes("registered on") ? (
+        <LocationBadge payload={payload} icon={Calendar} title="Registration Date" />
+      ) : (
+        intent === 'CRIME_TREND' && results && (
+          <div className="mt-3 rounded-2xl border border-purple-500/20 bg-purple-950/5 p-5 space-y-4 shadow-[0_4px_25px_rgba(168,85,247,0.05)]">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5">
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="w-5 h-5 text-purple-400" />
+                <span className="text-xs font-mono font-bold tracking-wider text-purple-400 uppercase">
+                  Crime Trend Analytics
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-neutral-500 uppercase font-bold">Growth Statistics</span>
             </div>
-            <span className="text-[10px] font-mono text-neutral-500 uppercase font-bold">Growth Statistics</span>
+            <UniversalChartContainer data={results} />
           </div>
-          <UniversalChartContainer data={results} />
-        </div>
+        )
       )}
 
       {/* 5. HOTSPOT */}
@@ -1898,413 +1987,56 @@ export default function AIWorkspace({
     }
   };
 
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    let y = 20;
-    const pageHeight = doc.internal.pageSize.height;
-    const margin = 15;
-    const maxWidth = 180;
-
-    const checkPageBreak = (needed: number) => {
-      if (y + needed > pageHeight - margin - 15) { 
-        doc.addPage();
-        y = margin + 10;
-        return true;
-      }
-      return false;
-    };
-
-
-
-    // --- COVER / HEADER ---
-    doc.setFillColor(15, 23, 42); // Slate 900
-    doc.rect(0, 0, 210, 40, 'F');
-    
-    // Shield / Logo placeholder
-    doc.setDrawColor(255, 255, 255);
-    doc.setLineWidth(1);
-    doc.line(margin, 15, margin, 25);
-    doc.line(margin, 15, margin + 5, 20);
-    doc.line(margin, 25, margin + 5, 20);
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.text("KSP SENTINEL AI", margin + 10, 20);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(t("OFFICIAL INTELLIGENCE REPORT", activeUiLang), margin + 10, 26);
-    
-    // Confidential Badge
-    doc.setFillColor(220, 38, 38); 
-    doc.rect(210 - margin - 35, 12, 35, 8, 'F');
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text(t("CONFIDENTIAL", activeUiLang), 210 - margin - 32, 17.5);
-
-    y = 50;
-    const activePayloads = messages.filter(m => m.backendPayload);
-
-    // --- METADATA ---
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(t("REPORT METADATA", activeUiLang), margin, y);
-    y += 8;
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`${t('Officer', activeUiLang)}: KSP Authorized User`, margin, y);
-    doc.text(`${t('Generated Date', activeUiLang)}: ${new Date().toLocaleDateString()}`, 105, y);
-    y += 6;
-    doc.text(`Model: ${selectedModel}`, margin, y);
-    doc.text(`Generated Time: ${new Date().toLocaleTimeString()}`, 105, y);
-    y += 6;
-    doc.text(`Session ID: ${Date.now().toString(36).toUpperCase()}`, margin, y);
-    doc.text(`Classification: CONFIDENTIAL`, 105, y);
-    y += 12;
-
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, 210 - margin, y);
-    y += 10;
-
-    // --- EXECUTIVE SUMMARY ---
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(t("1. EXECUTIVE SUMMARY", activeUiLang), margin, y);
-    y += 10;
-
-    // KPI Cards
-    const kpiWidth = 85;
-    const kpiHeight = 22;
-    const kpiSpacing = 10;
-    
-    const drawKpi = (x: number, yPos: number, title: string, value: string) => {
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, yPos, kpiWidth, kpiHeight, 2, 2, 'FD');
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(14);
-      doc.setTextColor(15, 23, 42);
-      doc.text(value, x + 5, yPos + 10);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139);
-      doc.text(title, x + 5, yPos + 17);
-    };
-
-    let totalRecords = 0;
-    activePayloads.forEach(p => {
-      if (p.backendPayload?.results) totalRecords += p.backendPayload.results.length;
-      if (p.backendPayload?.count) totalRecords += p.backendPayload.count;
-      if (p.backendPayload?.prediction) totalRecords += p.backendPayload.prediction.predicted_cases;
-    });
-
-    let highestRisk = 'LOW';
-    let avgConfidence = 0;
-    let predCount = 0;
-    activePayloads.forEach(p => {
-      const risk = p.backendPayload?.prediction?.risk_level;
-      if (risk === 'HIGH') highestRisk = 'HIGH';
-      else if (risk === 'MEDIUM' && highestRisk !== 'HIGH') highestRisk = 'MEDIUM';
+  const exportPDF = async () => {
+    try {
+      const activePayloads = messages.filter(m => m.backendPayload);
+      let reportId = `EXP-${Date.now()}`;
       
-      const conf = p.backendPayload?.prediction?.confidence;
-      if (conf) {
-        avgConfidence += conf;
-        predCount++;
-      }
-    });
-    if (predCount > 0) avgConfidence = Math.round(avgConfidence / predCount);
-
-    const highestThreat = activePayloads.find(p => p.backendPayload?.prediction?.risk_level)?.backendPayload?.prediction?.risk_level ?? 'LOW';
-    const highestConfidence = activePayloads.find(p => p.backendPayload?.prediction?.confidence)?.backendPayload?.prediction?.confidence ?? 'N/A';
-
-    drawKpi(margin, y, t("TOTAL QUERIES", activeUiLang), `${activePayloads.length}`);
-    drawKpi(margin + kpiWidth + kpiSpacing, y, t("RECORDS RETRIEVED/PREDICTED", activeUiLang), `${totalRecords}`);
-    y += kpiHeight + 5;
-    
-    drawKpi(margin, y, t("REPORT THREAT LEVEL", activeUiLang), highestThreat);
-    drawKpi(margin + kpiWidth + kpiSpacing, y, t("AI CONFIDENCE", activeUiLang), highestConfidence !== 'N/A' ? `${highestConfidence}%` : 'N/A');
-    y += kpiHeight + 15;
-
-    // --- KEY FINDINGS ---
-    checkPageBreak(20);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(t("2. KEY FINDINGS", activeUiLang), margin, y);
-    y += 8;
-
-    if (activePayloads.length === 0) {
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(10);
-      doc.text("No specific operational findings were generated.", margin, y);
-      y += 10;
-    }
-
-    const aiMessages = messages.filter(m => m.sender === 'assistant' && m.backendPayload);
-
-    aiMessages.forEach((msg, idx) => {
-      checkPageBreak(50);
-      
-      const payload = msg.backendPayload!;
-      const msgIndex = messages.findIndex(m => m.id === msg.id);
-      const userMsg = msgIndex > 0 ? messages[msgIndex - 1] : null;
-      const userText = userMsg && userMsg.sender === 'user' ? userMsg.text : 'Unknown Query';
-      
-      // Finding Header
-      doc.setFillColor(241, 245, 249);
-      doc.setDrawColor(203, 213, 225);
-      doc.roundedRect(margin, y, maxWidth, 8, 1, 1, 'FD');
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(15, 23, 42);
-      doc.text(`Finding ${idx + 1}`, margin + 3, y + 5.5);
-      y += 12;
-
-      // User Query
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(71, 85, 105);
-      doc.text("User Query:", margin, y);
-      y += 5;
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(15, 23, 42);
-      const queryLines = doc.splitTextToSize(userText.replace(/[^\x20-\x7E\n]/g, ""), maxWidth);
-      doc.text(queryLines, margin, y);
-      y += queryLines.length * 5 + 4;
-
-      // Assistant Response
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(71, 85, 105);
-      doc.text("Assistant Response:", margin, y);
-      y += 5;
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(15, 23, 42);
-      let responseText = String(msg.text).replace(/[^\x20-\x7E\n]/g, ""); 
-      const respLines = doc.splitTextToSize(responseText, maxWidth);
-      doc.text(respLines, margin, y);
-      y += respLines.length * 5 + 4;
-
-      // Summary
-      if (payload.summary) {
-        doc.setFont("helvetica", "bold");
-        doc.text("Summary:", margin, y);
-        y += 5;
-        doc.setFont("helvetica", "normal");
-        const sumLines = doc.splitTextToSize(String(payload.summary).replace(/[^\x20-\x7E\n]/g, ""), maxWidth);
-        doc.text(sumLines, margin, y);
-        y += sumLines.length * 5 + 4;
-      }
-
-      // Prediction specifics
-      if (payload.prediction) {
-        doc.setFont("helvetica", "bold");
-        doc.text("Prediction Insight:", margin, y);
-        y += 5;
-        doc.setFont("helvetica", "normal");
-        doc.text(`Forecast: ${payload.prediction.forecast_month} | Predicted Cases: ${payload.prediction.predicted_cases} | Trend: ${payload.prediction.trend}`, margin, y);
-        y += 6;
-      }
-
-      // Render Table
-      if (payload.results && Array.isArray(payload.results) && payload.results.length > 0) {
-        checkPageBreak(30);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        doc.setTextColor(71, 85, 105);
-        doc.text(`Records Found: ${payload.results.length}`, margin, y);
-        y += 6;
-        
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
-        doc.setTextColor(15, 23, 42);
-        const headers = Object.keys(payload.results[0]).slice(0, 4); // Up to 4 cols
-        const colWidth = maxWidth / headers.length;
-        
-        doc.setFillColor(241, 245, 249);
-        doc.rect(margin, y, maxWidth, 6, 'F');
-        headers.forEach((h, i) => {
-          doc.text(h.substring(0, 15), margin + 2 + (i * colWidth), y + 4);
-        });
-        y += 6;
-        
-        doc.setFont("helvetica", "normal");
-        const rowsToDraw = payload.results.slice(0, 5);
-        rowsToDraw.forEach((row) => {
-          checkPageBreak(10);
-          headers.forEach((h, i) => {
-            const val = String(row[h] || '').substring(0, 20);
-            doc.text(val, margin + 2 + (i * colWidth), y + 4);
-          });
-          doc.setDrawColor(226, 232, 240);
-          doc.line(margin, y + 6, margin + maxWidth, y + 6);
-          y += 6;
-        });
-        
-        if (payload.results.length > 5) {
-          y += 4;
-          doc.setFont("helvetica", "italic");
-          doc.setTextColor(100, 116, 139);
-          doc.text(`...and ${payload.results.length - 5} more matching records.`, margin + 2, y);
-          y += 6;
+      // Extract crime_no or report_id from payload
+      if (activePayloads.length > 0) {
+        const payload = activePayloads[activePayloads.length - 1].backendPayload;
+        if (payload?.results && payload.results.length > 0 && payload.results[0].crime_no) {
+          reportId = payload.results[0].crime_no;
+        } else if (payload?.report_id) {
+          reportId = payload.report_id;
+        } else if (activePayloads[0].backendPayload?.results?.[0]?.crime_no) {
+          reportId = activePayloads[0].backendPayload.results[0].crime_no;
         }
-        y += 4;
       }
-      y += 8;
-    });
-
-    // --- RECOMMENDATIONS ---
-    checkPageBreak(30);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(t("3. AI RECOMMENDATIONS", activeUiLang), margin, y);
-    y += 10;
-
-    if (activePayloads.length === 0) {
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(10);
-      doc.text("No specific recommendations generated.", margin, y);
-      y += 10;
-    }
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    
-    // Dynamic Recommendation Generation
-    const recommendationSet = new Set<string>();
-    
-    activePayloads.forEach(p => {
-      const intent = p.backendPayload?.intent;
-      const risk = p.backendPayload?.prediction?.risk_level;
+      console.log("Export button clicked");
+      console.log(`Calling POST /reports/${reportId}/export`);
       
-      if (intent === 'SEARCH_CASES') {
-        recommendationSet.add("Increase targeted patrols in affected sectors.");
-        recommendationSet.add("Review CCTV footage across identified transit routes.");
-        recommendationSet.add("Cross-check Modus Operandi with recent repeat offenders.");
-      } else if (intent === 'PREDICT_CRIME') {
-        if (risk === 'HIGH') {
-          recommendationSet.add("IMMEDIATE: Deploy specialized surveillance teams.");
-          recommendationSet.add("Alert district control room regarding imminent threat vectors.");
-          recommendationSet.add("Significantly increase night patrol frequencies in predicted zones.");
-        } else if (risk === 'MEDIUM') {
-          recommendationSet.add("Review recent FIR patterns for emerging clusters.");
-          recommendationSet.add("Increase general monitoring in predicted areas.");
-          recommendationSet.add("Initiate preventive patrols during high-risk time windows.");
-        } else {
-          recommendationSet.add("Continue routine monitoring protocols.");
-          recommendationSet.add("Schedule a monthly review of crime trends in this sector.");
-        }
-      } else if (intent === 'HOTSPOT') {
-        recommendationSet.add("Prioritize CCTV deployment in identified hotspot zones.");
-        recommendationSet.add("Establish static pickets during peak crime hours.");
-        recommendationSet.add("Enhance traffic and vehicle monitoring at entry/exit points.");
-      } else if (intent === 'SEARCH_ACCUSED') {
-        recommendationSet.add("Initiate deep background verification for identified individuals.");
-        recommendationSet.add("Conduct thorough associate network review (Call Detail Records).");
-        recommendationSet.add("Execute financial linkage analysis and freeze suspicious accounts.");
-        recommendationSet.add("Perform device correlation to establish movement patterns.");
-      } else if (intent === 'CRIME_TREND') {
-        recommendationSet.add("Reallocate resources based on identified upward/downward trends.");
-        recommendationSet.add("Conduct community outreach programs in high-trend sectors.");
+      const postResponse = await api.post(`/reports/${reportId}/export`, { messages });
+      console.log("POST response received", postResponse.data);
+      
+      const returnedDownloadUrl = postResponse.data.download_url;
+      console.log("download_url received", returnedDownloadUrl);
+      
+      console.log("Starting download");
+      
+      // Construct full URL since the download endpoint is not under /api/v1
+      const baseUrl = api.defaults.baseURL?.replace('/api/v1', '') || 'http://127.0.0.1:8000';
+      const fullDownloadUrl = `${baseUrl}${returnedDownloadUrl}`;
+      
+      // Fetch the file as a blob to guarantee filename and handle CORS safely
+      const fileResponse = await fetch(fullDownloadUrl);
+      if (!fileResponse.ok) {
+        throw new Error(`Failed to fetch PDF: ${fileResponse.statusText}`);
       }
-    });
-
-    if (recommendationSet.size === 0) {
-       recommendationSet.add("Standard protocol applies. Proceed with routine investigation parameters based on the findings above.");
+      const blob = await fileResponse.blob();
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Investigation_Report_${reportId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      setError("Failed to download PDF report. Please try again.");
     }
-
-    const recList = Array.from(recommendationSet).slice(0, 5); 
-    
-    recList.forEach(rec => {
-      checkPageBreak(8);
-      doc.setFont("helvetica", "bold");
-      doc.text("-", margin + 2, y);
-      doc.setFont("helvetica", "normal");
-      
-      const lines = doc.splitTextToSize(rec.replace(/[^\x20-\x7E\n]/g, ""), maxWidth - 10);
-      doc.text(lines, margin + 8, y);
-      y += lines.length * 5 + 2;
-    });
-
-    // --- DEVELOPER METADATA ---
-    checkPageBreak(30);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text("4. DEVELOPER METADATA", margin, y);
-    y += 10;
-    
-    aiMessages.forEach((msg, idx) => {
-      const payload = msg.backendPayload!;
-      checkPageBreak(40);
-      
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(margin, y, maxWidth, 32, 2, 2, 'FD');
-      
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(15, 23, 42);
-      doc.text(`Query ${idx + 1} Metadata`, margin + 4, y + 6);
-      
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      doc.setTextColor(71, 85, 105);
-      
-      let filters = 'None';
-      if (Array.isArray(payload.explanation?.filters)) {
-        filters = payload.explanation!.filters.join(', ');
-      } else if (payload.explanation?.filters) {
-        filters = String(payload.explanation.filters);
-      }
-      
-      const timeMs = payload.metadata?.query_time_ms || 0;
-      let confStr = payload.explanation?.confidence ? `${(payload.explanation.confidence * 100).toFixed(1)}%` : '100.0%';
-      
-      doc.text(`Intent:`, margin + 4, y + 12);
-      doc.text(`${payload.intent || 'Unknown'}`, margin + 30, y + 12);
-      
-      doc.text(`Filters:`, margin + 90, y + 12);
-      doc.text(`${filters.substring(0, 45)}${filters.length > 45 ? '...' : ''}`, margin + 115, y + 12);
-      
-      doc.text(`Confidence:`, margin + 4, y + 18);
-      doc.text(`${confStr}`, margin + 30, y + 18);
-      
-      doc.text(`Execution:`, margin + 90, y + 18);
-      doc.text(`${timeMs} ms`, margin + 115, y + 18);
-      
-      doc.text(`SQL Statement:`, margin + 4, y + 24);
-      const sqlText = (payload.explanation?.sql_summary || 'None').replace(/[^\x20-\x7E\n]/g, "");
-      doc.text(sqlText.substring(0, 75) + (sqlText.length > 75 ? '...' : ''), margin + 30, y + 24);
-      
-      y += 40;
-    });
-
-    // Add footer to all pages
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.5);
-      doc.line(margin, pageHeight - 15, 210 - margin, pageHeight - 15);
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139);
-      doc.text(t(`Generated by KSP Sentinel AI`, activeUiLang), margin, pageHeight - 10);
-      
-      doc.setFont("helvetica", "normal");
-      doc.text(t(`Internal Intelligence Report - CONFIDENTIAL`, activeUiLang), 105, pageHeight - 10, { align: 'center' });
-      doc.text(`${t('Page', activeUiLang)} ${i} ${t('of', activeUiLang)} ${pageCount}`, 210 - margin, pageHeight - 10, { align: 'right' });
-    }
-
-    doc.save(`KSP_Intelligence_Report_${Date.now()}.pdf`);
   };
 
   return (
@@ -2584,7 +2316,7 @@ export default function AIWorkspace({
                       : 'bg-[#141A22] text-neutral-200 rounded-tl-sm border border-white/5'
                   }`}
                 >
-                  <div className="font-sans leading-relaxed text-[15px]">
+                  <div className="font-sans leading-relaxed text-[15px] whitespace-pre-wrap">
                     {!isUser && msg.isStreaming ? (
                       <StreamedText
                         text={msg.id === 'm-welcome' ? t(msg.text, activeUiLang) : msg.text}

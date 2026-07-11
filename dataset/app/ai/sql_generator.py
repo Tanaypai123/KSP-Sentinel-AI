@@ -10,12 +10,10 @@ It accepts the parsed output from ``app.ai.query_parser`` – a dictionary with
 necessary.
 """
 
-from __future__ import annotations
+from typing import Any, Callable, Dict, Optional
 
-from typing import Any, Callable, Dict, List, Optional
-
-from sqlalchemy import and_, func, or_, select
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import selectinload
 
 # Import the verified ORM models.
 from app.models.case import (
@@ -93,9 +91,6 @@ def _filter_fir_number(stmt, value):
     for v in variants:
         conditions.append(CaseMaster.crime_no.ilike(v))
         conditions.append(CaseMaster.case_no.ilike(v))
-        # Also add a wildcard partial match for each variant
-        conditions.append(CaseMaster.crime_no.ilike(f"%{v}%"))
-        conditions.append(CaseMaster.case_no.ilike(f"%{v}%"))
 
     return stmt.where(or_(*conditions))
 
@@ -289,10 +284,12 @@ def _resolve_sort_column(intent: str, sort_by: str):
         "case": CaseMaster.crime_registered_date,
         "firs": CaseMaster.crime_no,
         "fir": CaseMaster.crime_no,
-        "accused": Accused.accused_name,
-        "victims": Victim.victim_name,
-        "victim": Victim.victim_name,
     }
+    if intent == "SEARCH_ACCUSED":
+        mapping["accused"] = Accused.accused_name
+    elif intent == "SEARCH_VICTIMS":
+        mapping["victims"] = Victim.victim_name
+        mapping["victim"] = Victim.victim_name
     return mapping.get(sort_by.lower())
 
 def _normalize_sort_order(order: Optional[str]) -> str:
@@ -328,7 +325,7 @@ def _apply_sort_and_pagination(stmt, entities: Dict[str, Any], intent: str):
             if column is not None:
                 stmt = stmt.order_by(column.asc() if sort_order == "asc" else column.desc())
         else:
-            if intent in {"SEARCH_CASES", "FIR_LOOKUP"}:
+            if intent in {"SEARCH_CASES", "FIR_LOOKUP", "HOTSPOT"}:
                 stmt = stmt.order_by(CaseMaster.crime_registered_date.desc())
             elif intent == "SEARCH_ACCUSED":
                 if entities.get("accused_name"):
@@ -365,7 +362,7 @@ def generate_select(parsed_query: Dict[str, Any]):
     # -------------------------------------------------------------------
     # Intent‑specific base statements
     # -------------------------------------------------------------------
-    if intent in {"SEARCH_CASES", "FIR_LOOKUP"}:
+    if intent in {"SEARCH_CASES", "FIR_LOOKUP", "HOTSPOT"}:
         stmt = select(CaseMaster)
         
         # Override FIR lookup filter to use the robust identifiers list if available

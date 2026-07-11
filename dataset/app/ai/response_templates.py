@@ -3,7 +3,7 @@ Centralized response templates for the AI pipeline.
 Ensures consistent, professional communication and clear error messages.
 """
 
-from typing import Dict, Any, List
+from typing import List
 
 # ---------------------------------------------------------
 # Conversational Templates

@@ -50,15 +50,46 @@ def generate_intelligence_report(
     }
 
 
-@router.get("/{report_id}/export")
+@router.post("/{report_id}/export")
 def export_report(
     report_id: str,
+    payload: Dict[str, Any] = None,
     db: Session = Depends(get_db),
 ):
     """
-    Placeholder export endpoint.
-    Actual PDF generation can be added later.
+    Export PDF endpoint.
     """
+    import os
+    import logging
+    from app.services.pdf_generator import generate_pdf_report
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Export request received for report_id: {report_id}")
+    if payload:
+        logger.info(f"Received payload with keys: {list(payload.keys())}")
+    logger.info("PDF generation started")
+
+    import os
+    from app.services.pdf_generator import generate_pdf_report
+    
+    # Save the PDF in dataset/app/temp_reports
+    pdf_dir = os.path.join(os.path.dirname(__file__), "..", "..", "temp_reports")
+    os.makedirs(pdf_dir, exist_ok=True)
+    pdf_path = os.path.join(pdf_dir, f"{report_id}.pdf")
+    abs_pdf_path = os.path.abspath(pdf_path)
+    
+    generate_pdf_report(report_id, pdf_path, payload)
+    
+    import os
+    file_exists = os.path.exists(abs_pdf_path)
+    file_size = os.path.getsize(abs_pdf_path) if file_exists else 0
+    dir_listing = os.listdir(os.path.abspath(pdf_dir))
+    
+    logger.info(f"Absolute output path: {abs_pdf_path}")
+    logger.info(f"Filename: {report_id}.pdf")
+    logger.info(f"os.path.exists(path): {file_exists}")
+    logger.info(f"os.path.getsize(path): {file_size}")
+    logger.info(f"Directory listing of temp_reports: {dir_listing}")
 
     return {
         "report_id": report_id,

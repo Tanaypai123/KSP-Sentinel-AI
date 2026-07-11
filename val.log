@@ -1,0 +1,61 @@
+Starting 200+ Scenario Validation Suite...
+/Users/tanaysharma/Desktop/KSP-Sentinel-AI/dataset/app/ai/query_executor.py:15: SAWarning: SELECT statement has a cartesian product between FROM element(s) "case_master" and FROM element "accused".  Apply join condition(s) between each element to resolve.
+  result = db.execute(select_stmt)
+
+[PREDICTOR DEBUG] Generated SQL:
+ SELECT EXTRACT(year FROM case_master."CrimeRegisteredDate") AS yr, EXTRACT(month FROM case_master."CrimeRegisteredDate") AS mo, count(case_master."CaseMasterID") AS cnt 
+FROM case_master 
+WHERE case_master."CrimeRegisteredDate" IS NOT NULL AND case_master."CrimeMajorHeadID" = 1 GROUP BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate") ORDER BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate")
+
+[PREDICTOR DEBUG] Generated SQL:
+ SELECT EXTRACT(year FROM case_master."CrimeRegisteredDate") AS yr, EXTRACT(month FROM case_master."CrimeRegisteredDate") AS mo, count(case_master."CaseMasterID") AS cnt 
+FROM case_master 
+WHERE case_master."CrimeRegisteredDate" IS NOT NULL AND case_master."CrimeMajorHeadID" = 1 GROUP BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate") ORDER BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate")
+
+[PREDICTOR DEBUG] Generated SQL:
+ SELECT EXTRACT(year FROM case_master."CrimeRegisteredDate") AS yr, EXTRACT(month FROM case_master."CrimeRegisteredDate") AS mo, count(case_master."CaseMasterID") AS cnt 
+FROM case_master 
+WHERE case_master."CrimeRegisteredDate" IS NOT NULL AND case_master."CrimeMajorHeadID" = 1 GROUP BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate") ORDER BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate")
+
+[PREDICTOR DEBUG] Generated SQL:
+ SELECT EXTRACT(year FROM case_master."CrimeRegisteredDate") AS yr, EXTRACT(month FROM case_master."CrimeRegisteredDate") AS mo, count(case_master."CaseMasterID") AS cnt 
+FROM case_master 
+WHERE case_master."CrimeRegisteredDate" IS NOT NULL AND case_master."CrimeMajorHeadID" = 1 GROUP BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate") ORDER BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate")
+
+[PREDICTOR DEBUG] Generated SQL:
+ SELECT EXTRACT(year FROM case_master."CrimeRegisteredDate") AS yr, EXTRACT(month FROM case_master."CrimeRegisteredDate") AS mo, count(case_master."CaseMasterID") AS cnt 
+FROM case_master 
+WHERE case_master."CrimeRegisteredDate" IS NOT NULL AND case_master."CrimeMajorHeadID" = 1 GROUP BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate") ORDER BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate")
+
+[PREDICTOR DEBUG] Generated SQL:
+ SELECT EXTRACT(year FROM case_master."CrimeRegisteredDate") AS yr, EXTRACT(month FROM case_master."CrimeRegisteredDate") AS mo, count(case_master."CaseMasterID") AS cnt 
+FROM case_master 
+WHERE case_master."CrimeRegisteredDate" IS NOT NULL AND case_master."CrimeMajorHeadID" = 1 GROUP BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate") ORDER BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate")
+
+[PREDICTOR DEBUG] Generated SQL:
+ SELECT EXTRACT(year FROM case_master."CrimeRegisteredDate") AS yr, EXTRACT(month FROM case_master."CrimeRegisteredDate") AS mo, count(case_master."CaseMasterID") AS cnt 
+FROM case_master 
+WHERE case_master."CrimeRegisteredDate" IS NOT NULL AND case_master."CrimeMajorHeadID" = 1 GROUP BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate") ORDER BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate")
+
+[PREDICTOR DEBUG] Generated SQL:
+ SELECT EXTRACT(year FROM case_master."CrimeRegisteredDate") AS yr, EXTRACT(month FROM case_master."CrimeRegisteredDate") AS mo, count(case_master."CaseMasterID") AS cnt 
+FROM case_master 
+WHERE case_master."CrimeRegisteredDate" IS NOT NULL AND case_master."CrimeMajorHeadID" = 1 GROUP BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate") ORDER BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate")
+
+[PREDICTOR DEBUG] Generated SQL:
+ SELECT EXTRACT(year FROM case_master."CrimeRegisteredDate") AS yr, EXTRACT(month FROM case_master."CrimeRegisteredDate") AS mo, count(case_master."CaseMasterID") AS cnt 
+FROM case_master 
+WHERE case_master."CrimeRegisteredDate" IS NOT NULL AND case_master."CrimeMajorHeadID" = 1 GROUP BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate") ORDER BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate")
+
+[PREDICTOR DEBUG] Generated SQL:
+ SELECT EXTRACT(year FROM case_master."CrimeRegisteredDate") AS yr, EXTRACT(month FROM case_master."CrimeRegisteredDate") AS mo, count(case_master."CaseMasterID") AS cnt 
+FROM case_master 
+WHERE case_master."CrimeRegisteredDate" IS NOT NULL AND case_master."CrimeMajorHeadID" = 1 GROUP BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate") ORDER BY EXTRACT(year FROM case_master."CrimeRegisteredDate"), EXTRACT(month FROM case_master."CrimeRegisteredDate")
+
+======================================
+VALIDATION RESULTS
+Total Scenarios: 290
+Passed: 290
+Failed: 0
+Average latency: 105.29ms
+======================================

@@ -4,11 +4,10 @@ Routes through `app.ai.entity_extractor` to execute structured NLP entity
 extraction, and maps entities back to legacy keys for database/SQL backward compatibility.
 """
 
-from __future__ import annotations
 
 import re
 from typing import Any, Dict, Optional
-from app.ai.entity_extractor import EntityExtractor
+
 
 
 def parse_query(query: str, db_session: Optional[Any] = None) -> Dict[str, Any]:
@@ -16,8 +15,9 @@ def parse_query(query: str, db_session: Optional[Any] = None) -> Dict[str, Any]:
 
     Maps values into both structured custom keys and backward-compatible legacy keys.
     """
-    # Run structured extraction
-    ext = EntityExtractor.extract_all(query, db_session)
+    from app.ai.nlp_engine import NLPEngine
+    nlp_res = NLPEngine.process_query(query, db_session)
+    ext = nlp_res["entities"]
 
     # -------------------------------------------------------------------------
     # Backward compatibility mapping for SQL generator and formatter

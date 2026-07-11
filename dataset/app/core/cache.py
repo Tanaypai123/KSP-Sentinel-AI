@@ -1,44 +1,34 @@
-"""In-memory caching utility for repeated database and analytical queries.
-
-Provides a TTL-based cache (default 5 minutes) to speed up operations and reduce
-duplicate SQL execution.
 """
+Storage-agnostic caching proxy delegating execution to registry-injected CacheProvider.
+"""
+from typing import Any, Optional, Dict
+from app.core.storage.registry import StorageRegistry
 
-from __future__ import annotations
+class AnalyticalCacheProxy:
+    """
+    A lightweight proxy class delegating cache actions to the configured CacheProvider.
+    Maintains full backward compatibility.
+    """
 
-import time
-from typing import Any, Dict, Optional
-
-
-class AnalyticalCache:
-    """Intelligent in-memory cache supporting key-based lookup and 5-minute TTL expiration."""
-
-    def __init__(self, ttl_seconds: int = 300):
-        self.ttl = ttl_seconds
-        self._cache: Dict[str, Dict[str, Any]] = {}
+    @property
+    def _provider(self):
+        return StorageRegistry.get_cache_provider()
 
     def get(self, key: str) -> Optional[Any]:
-        """Retrieve a value from the cache if it exists and is not expired."""
-        if key in self._cache:
-            entry = self._cache[key]
-            if time.time() - entry["timestamp"] < self.ttl:
-                return entry["data"]
-            else:
-                # Evict expired entry
-                del self._cache[key]
-        return None
+        return self._provider.get(key)
 
     def set(self, key: str, data: Any) -> None:
-        """Store a value in the cache with the current timestamp."""
-        self._cache[key] = {
-            "timestamp": time.time(),
-            "data": data
-        }
+        self._provider.set(key, data)
 
     def clear(self) -> None:
-        """Clear all entries in the cache."""
-        self._cache.clear()
+        self._provider.clear()
+
+    def contains(self, key: str) -> bool:
+        return self._provider.contains(key)
+
+    def stats(self) -> Dict[str, Any]:
+        return self._provider.stats()
 
 
-# Shared cache instance
-global_cache = AnalyticalCache(ttl_seconds=300)
+# Expose global cache instance using the proxy pattern
+global_cache = AnalyticalCacheProxy()

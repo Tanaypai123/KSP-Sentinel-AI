@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel AI — Quality Evaluation Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #c9d1d9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 24px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #58a6ff;
+            border-bottom: 1px solid #21262d;
+            padding-bottom: 12px;
+            margin-bottom: 24px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        .card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .card-title {
+            font-size: 13px;
+            color: #8b949e;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .card-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #f0f6fc;
+        }
+        .card-value.pass { color: #3fb950; }
+        .card-value.fail { color: #f85149; }
+        .card-value.warn { color: #d29922; }
+        .chart-container {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 32px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sentinel AI — Quality Evaluation Dashboard</h1>
+        <p style="color: #8b949e; margin-top: -12px; margin-bottom: 24px;">Latest Run Timestamp: 2026-07-11T13:06:33.830423</p>
+        
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">Intent Accuracy</div>
+                <div class="card-value pass">92.86%</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Entity Accuracy</div>
+                <div class="card-value pass">69.00%</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Conversation Accuracy</div>
+                <div class="card-value pass">76.21%</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Average Latency</div>
+                <div class="card-value warn">95.7 ms</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Hallucination Rate</div>
+                <div class="card-value pass">0.00%</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3 style="margin-top: 0; color: #f0f6fc;">Accuracy Trends</h3>
+            <canvas id="accuracyChart" height="100"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h3 style="margin-top: 0; color: #f0f6fc;">Latency & Hallucination Trends</h3>
+            <canvas id="latencyChart" height="100"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const labels = ["2026-07-10 07:31", "2026-07-10 22:05", "2026-07-10 22:18", "2026-07-10 22:19", "2026-07-10 22:32", "2026-07-10 22:56", "2026-07-11 11:53", "2026-07-11 12:13", "2026-07-11 12:28", "2026-07-11 13:06"];
+        
+        new Chart(document.getElementById('accuracyChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Intent Accuracy %',
+                        data: [92.85714285714286, 92.85714285714286, 92.85714285714286, 92.85714285714286, 92.85714285714286, 92.85714285714286, 92.85714285714286, 92.85714285714286, 92.85714285714286, 92.85714285714286],
+                        borderColor: '#58a6ff',
+                        backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                        tension: 0.2,
+                        fill: true
+                    },
+                    {
+                        label: 'Entity Accuracy %',
+                        data: [69.0, 69.0, 69.0, 69.0, 69.0, 69.0, 69.0, 69.0, 69.0, 69.0],
+                        borderColor: '#3fb950',
+                        backgroundColor: 'rgba(63, 185, 80, 0.1)',
+                        tension: 0.2,
+                        fill: true
+                    },
+                    {
+                        label: 'Conversation Accuracy %',
+                        data: [76.21428571428571, 76.21428571428571, 76.21428571428571, 76.21428571428571, 76.21428571428571, 76.21428571428571, 76.21428571428571, 76.21428571428571, 76.21428571428571, 76.21428571428571],
+                        borderColor: '#d29922',
+                        backgroundColor: 'rgba(210, 153, 34, 0.1)',
+                        tension: 0.2,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#c9d1d9' } }
+                },
+                scales: {
+                    y: { grid: { color: '#30363d' }, ticks: { color: '#c9d1d9' } },
+                    x: { grid: { color: '#30363d' }, ticks: { color: '#c9d1d9' } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('latencyChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Avg Latency (ms)',
+                        data: [27.820259843553817, 21.66513340813773, 23.71185336794172, 24.652615445000784, 45.011234283447266, 40.273957763399395, 36.36456046785627, 48.133279596056255, 46.22039777891977, 95.70236052785602],
+                        borderColor: '#a371f7',
+                        tension: 0.2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Hallucination Rate %',
+                        data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                        borderColor: '#f85149',
+                        tension: 0.2,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#c9d1d9' } }
+                },
+                scales: {
+                    y: { 
+                        type: 'linear', 
+                        position: 'left',
+                        grid: { color: '#30363d' }, 
+                        ticks: { color: '#c9d1d9' } 
+                    },
+                    y1: { 
+                        type: 'linear', 
+                        position: 'right',
+                        grid: { drawOnChartArea: false }, 
+                        ticks: { color: '#c9d1d9' } 
+                    },
+                    x: { grid: { color: '#30363d' }, ticks: { color: '#c9d1d9' } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

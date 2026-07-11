@@ -155,141 +155,142 @@ TEST_CASES = [
     ("Location Mysuru", Intent.SEARCH_CASES, None, {"district": "Mysuru"}),
 ]
 
-print("=" * 85)
-print(f"Executing KSP Sentinel AI NLP Unit Test Suite ({len(TEST_CASES)} cases)")
-print("=" * 85)
+if __name__ == "__main__":
+    print("=" * 85)
+    print(f"Executing KSP Sentinel AI NLP Unit Test Suite ({len(TEST_CASES)} cases)")
+    print("=" * 85)
 
-passed = 0
-failed = 0
+    passed = 0
+    failed = 0
 
-for i, (query, expected_intent, expected_crime, checks) in enumerate(TEST_CASES, 1):
-    # 1. Test Intent Classification and Confidence
-    intent, confidence = classify_intent_with_confidence(query)
-    
-    # 2. Parse Query
-    parsed = parse_query(query)
-    entities = parsed["entities"]
+    for i, (query, expected_intent, expected_crime, checks) in enumerate(TEST_CASES, 1):
+        # 1. Test Intent Classification and Confidence
+        intent, confidence = classify_intent_with_confidence(query)
+        
+        # 2. Parse Query
+        parsed = parse_query(query)
+        entities = parsed["entities"]
 
-    # 3. Assess Multi-command check
-    crime_keywords = ["theft", "assault", "murder", "rape", "kidnapping", "robbery", "burglary"]
-    detected_crimes = [c for c in crime_keywords if re.search(r"\b" + re.escape(c) + r"\b", query.lower())]
-    has_multiple_verbs = len(re.findall(r"\b(show|predict|trend|hotspot)\b", query.lower())) > 1
-    multiple_commands_detected = len(detected_crimes) > 1 or has_multiple_verbs
+        # 3. Assess Multi-command check
+        crime_keywords = ["theft", "assault", "murder", "rape", "kidnapping", "robbery", "burglary"]
+        detected_crimes = [c for c in crime_keywords if re.search(r"\b" + re.escape(c) + r"\b", query.lower())]
+        has_multiple_verbs = len(re.findall(r"\b(show|predict|trend|hotspot)\b", query.lower())) > 1
+        multiple_commands_detected = len(detected_crimes) > 1 or has_multiple_verbs
 
-    # Run check assertions
-    case_passed = True
-    reasons = []
+        # Run check assertions
+        case_passed = True
+        reasons = []
 
-    # Check multiple commands
-    if checks.get("multiple_commands"):
-        if not multiple_commands_detected:
-            case_passed = False
-            reasons.append("Failed to detect multiple commands")
-    else:
-        # Check intent classification matches
-        if expected_intent is not None and intent != expected_intent:
-            case_passed = False
-            reasons.append(f"Expected intent {expected_intent}, got {intent}")
-
-        # Check intent confidence limits
-        if checks.get("confidence_ge") and confidence < checks["confidence_ge"]:
-            case_passed = False
-            reasons.append(f"Confidence score {confidence} is less than {checks['confidence_ge']}")
-        if checks.get("confidence_lt") and confidence >= checks["confidence_lt"]:
-            case_passed = False
-            reasons.append(f"Confidence score {confidence} is greater than or equal to {checks['confidence_lt']}")
-
-        # Check crime_head mappings
-        if expected_crime is not None and entities.get("crime_head") != expected_crime:
-            case_passed = False
-            reasons.append(f"Expected crime_head {expected_crime!r}, got {entities.get('crime_head')!r}")
-
-        # Check district mappings
-        if checks.get("district"):
-            if entities.get("district") != checks["district"]:
+        # Check multiple commands
+        if checks.get("multiple_commands"):
+            if not multiple_commands_detected:
                 case_passed = False
-                reasons.append(f"Expected district {checks['district']!r}, got {entities.get('district')!r}")
-
-        # Check invalid district suggestions fallback trigger
-        if checks.get("district_suggestions"):
-            if entities.get("structured_is_valid_district") is not False:
+                reasons.append("Failed to detect multiple commands")
+        else:
+            # Check intent classification matches
+            if expected_intent is not None and intent != expected_intent:
                 case_passed = False
-                reasons.append("Expected structured_is_valid_district to be False")
+                reasons.append(f"Expected intent {expected_intent}, got {intent}")
 
-        # Check relative dates key existences
-        if checks.get("relative_date"):
-            if not entities.get("date_range"):
+            # Check intent confidence limits
+            if checks.get("confidence_ge") and confidence < checks["confidence_ge"]:
                 case_passed = False
-                reasons.append("Expected relative date_range filter to be populated")
-
-        # Check flexible date filter after/before ranges
-        if checks.get("date_after"):
-            d_range = entities.get("date_range")
-            if not d_range or not d_range.startswith(checks["date_after"]):
+                reasons.append(f"Confidence score {confidence} is less than {checks['confidence_ge']}")
+            if checks.get("confidence_lt") and confidence >= checks["confidence_lt"]:
                 case_passed = False
-                reasons.append(f"Expected date_range start {checks['date_after']}, got {d_range}")
-        if checks.get("date_before"):
-            d_range = entities.get("date_range")
-            if not d_range or not d_range.endswith(checks["date_before"]):
+                reasons.append(f"Confidence score {confidence} is greater than or equal to {checks['confidence_lt']}")
+
+            # Check crime_head mappings
+            if expected_crime is not None and entities.get("crime_head") != expected_crime:
                 case_passed = False
-                reasons.append(f"Expected date_range end {checks['date_before']}, got {d_range}")
+                reasons.append(f"Expected crime_head {expected_crime!r}, got {entities.get('crime_head')!r}")
 
-        # Check limits
-        if checks.get("limit") and entities.get("limit") != checks["limit"]:
-            case_passed = False
-            reasons.append(f"Expected limit {checks['limit']}, got {entities.get('limit')}")
+            # Check district mappings
+            if checks.get("district"):
+                if entities.get("district") != checks["district"]:
+                    case_passed = False
+                    reasons.append(f"Expected district {checks['district']!r}, got {entities.get('district')!r}")
 
-        # Check sorting order
-        if checks.get("sort") and entities.get("sort_order") != checks["sort"]:
-            case_passed = False
-            reasons.append(f"Expected sort_order {checks['sort']!r}, got {entities.get('sort_order')!r}")
+            # Check invalid district suggestions fallback trigger
+            if checks.get("district_suggestions"):
+                if entities.get("structured_is_valid_district") is not False:
+                    case_passed = False
+                    reasons.append("Expected structured_is_valid_district to be False")
 
-        # Check age brackets
-        if checks.get("age_lt") and (entities.get("age") or {}).get("lt") != checks["age_lt"]:
-            case_passed = False
-            reasons.append(f"Expected age under {checks['age_lt']}, got {entities.get('age')}")
-        if checks.get("age_gt") and (entities.get("age") or {}).get("gt") != checks["age_gt"]:
-            case_passed = False
-            reasons.append(f"Expected age above {checks['age_gt']}, got {entities.get('age')}")
+            # Check relative dates key existences
+            if checks.get("relative_date"):
+                if not entities.get("date_range"):
+                    case_passed = False
+                    reasons.append("Expected relative date_range filter to be populated")
 
-        # Check status codes
-        if checks.get("status") and entities.get("status") != checks["status"]:
-            case_passed = False
-            reasons.append(f"Expected status ID {checks['status']}, got {entities.get('status')}")
+            # Check flexible date filter after/before ranges
+            if checks.get("date_after"):
+                d_range = entities.get("date_range")
+                if not d_range or not d_range.startswith(checks["date_after"]):
+                    case_passed = False
+                    reasons.append(f"Expected date_range start {checks['date_after']}, got {d_range}")
+            if checks.get("date_before"):
+                d_range = entities.get("date_range")
+                if not d_range or not d_range.endswith(checks["date_before"]):
+                    case_passed = False
+                    reasons.append(f"Expected date_range end {checks['date_before']}, got {d_range}")
 
-        # Check gender codes
-        if checks.get("gender") and entities.get("gender") != checks["gender"]:
-            case_passed = False
-            reasons.append(f"Expected gender ID {checks['gender']}, got {entities.get('gender')}")
-            
-        # Check explicit entity presence
-        if "fir_number_exists" in checks:
-            val = checks["fir_number_exists"]
-            if bool(entities.get("fir_number")) != val:
+            # Check limits
+            if checks.get("limit") and entities.get("limit") != checks["limit"]:
                 case_passed = False
-                reasons.append(f"Expected fir_number_exists={val}")
+                reasons.append(f"Expected limit {checks['limit']}, got {entities.get('limit')}")
 
-        if "accused_name_exists" in checks:
-            val = checks["accused_name_exists"]
-            if bool(entities.get("accused_name")) != val:
+            # Check sorting order
+            if checks.get("sort") and entities.get("sort_order") != checks["sort"]:
                 case_passed = False
-                reasons.append(f"Expected accused_name_exists={val}")
+                reasons.append(f"Expected sort_order {checks['sort']!r}, got {entities.get('sort_order')!r}")
 
-    if case_passed:
-        passed += 1
-        status = "✅ PASS"
-        detail = ""
-    else:
-        failed += 1
-        status = "❌ FAIL"
-        detail = f" | {', '.join(reasons)}"
+            # Check age brackets
+            if checks.get("age_lt") and (entities.get("age") or {}).get("lt") != checks["age_lt"]:
+                case_passed = False
+                reasons.append(f"Expected age under {checks['age_lt']}, got {entities.get('age')}")
+            if checks.get("age_gt") and (entities.get("age") or {}).get("gt") != checks["age_gt"]:
+                case_passed = False
+                reasons.append(f"Expected age above {checks['age_gt']}, got {entities.get('age')}")
 
-    print(f"Case {i:03d} | {status} | Query: {query!r}{detail}")
+            # Check status codes
+            if checks.get("status") and entities.get("status") != checks["status"]:
+                case_passed = False
+                reasons.append(f"Expected status ID {checks['status']}, got {entities.get('status')}")
 
-print("=" * 85)
-print(f"Test Suite Summary: Total={len(TEST_CASES)} | Passed={passed} | Failed={failed}")
-print("=" * 85)
+            # Check gender codes
+            if checks.get("gender") and entities.get("gender") != checks["gender"]:
+                case_passed = False
+                reasons.append(f"Expected gender ID {checks['gender']}, got {entities.get('gender')}")
+                
+            # Check explicit entity presence
+            if "fir_number_exists" in checks:
+                val = checks["fir_number_exists"]
+                if bool(entities.get("fir_number")) != val:
+                    case_passed = False
+                    reasons.append(f"Expected fir_number_exists={val}")
 
-if failed > 0:
-    sys.exit(1)
-sys.exit(0)
+            if "accused_name_exists" in checks:
+                val = checks["accused_name_exists"]
+                if bool(entities.get("accused_name")) != val:
+                    case_passed = False
+                    reasons.append(f"Expected accused_name_exists={val}")
+
+        if case_passed:
+            passed += 1
+            status = "✅ PASS"
+            detail = ""
+        else:
+            failed += 1
+            status = "❌ FAIL"
+            detail = f" | {', '.join(reasons)}"
+
+        print(f"Case {i:03d} | {status} | Query: {query!r}{detail}")
+
+    print("=" * 85)
+    print(f"Test Suite Summary: Total={len(TEST_CASES)} | Passed={passed} | Failed={failed}")
+    print("=" * 85)
+
+    if failed > 0:
+        sys.exit(1)
+    sys.exit(0)

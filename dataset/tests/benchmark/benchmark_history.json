@@ -1,0 +1,275 @@
+[
+  {
+    "timestamp": "2026-07-09T22:59:53.625106",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 98.21428571428571,
+      "entity_accuracy": 83.28571428571429,
+      "conversation_accuracy": 74.42857142857143,
+      "reference_resolution_accuracy": 18.666666666666668,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 92.14285714285714,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 37.318689482552664,
+      "p95_latency_ms": 38.59400749206543,
+      "p99_latency_ms": 653.6819934844971
+    }
+  },
+  {
+    "timestamp": "2026-07-10T00:05:14.634363",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 67.57142857142857,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 21.666666666666668,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 70.35714285714286,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 16.91363113267081,
+      "p95_latency_ms": 53.71904373168945,
+      "p99_latency_ms": 107.40113258361816
+    }
+  },
+  {
+    "timestamp": "2026-07-10T00:08:50.329826",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 69.0,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 21.666666666666668,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 70.35714285714286,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 16.040007216589792,
+      "p95_latency_ms": 43.49803924560547,
+      "p99_latency_ms": 104.44808006286621
+    }
+  },
+  {
+    "timestamp": "2026-07-10T07:31:18.549404",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 69.0,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 21.666666666666668,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 70.35714285714286,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 27.820259843553817,
+      "p95_latency_ms": 73.60005378723145,
+      "p99_latency_ms": 113.35992813110352
+    }
+  },
+  {
+    "timestamp": "2026-07-10T22:05:01.352679",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 69.0,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 21.666666666666668,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 22.714285714285715,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 21.66513340813773,
+      "p95_latency_ms": 61.68699264526367,
+      "p99_latency_ms": 108.31212997436523
+    }
+  },
+  {
+    "timestamp": "2026-07-10T22:18:11.838304",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 69.0,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 21.666666666666668,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 30.928571428571427,
+      "confidence_accuracy": 70.35714285714286,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 23.71185336794172,
+      "p95_latency_ms": 74.48291778564453,
+      "p99_latency_ms": 109.10677909851074
+    }
+  },
+  {
+    "timestamp": "2026-07-10T22:19:01.938108",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 69.0,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 21.666666666666668,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 70.35714285714286,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 24.652615445000784,
+      "p95_latency_ms": 70.13726234436035,
+      "p99_latency_ms": 120.1028823852539
+    }
+  },
+  {
+    "timestamp": "2026-07-10T22:32:44.825261",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 69.0,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 21.666666666666668,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 70.35714285714286,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 45.011234283447266,
+      "p95_latency_ms": 127.12597846984863,
+      "p99_latency_ms": 258.4209442138672
+    }
+  },
+  {
+    "timestamp": "2026-07-10T22:56:22.391723",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 69.0,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 21.666666666666668,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 70.35714285714286,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 40.273957763399395,
+      "p95_latency_ms": 116.81509017944336,
+      "p99_latency_ms": 356.78791999816895
+    }
+  },
+  {
+    "timestamp": "2026-07-11T11:53:33.420967",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 69.0,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 28.333333333333332,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 70.35714285714286,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 36.36456046785627,
+      "p95_latency_ms": 94.25687789916992,
+      "p99_latency_ms": 386.45410537719727
+    }
+  },
+  {
+    "timestamp": "2026-07-11T12:13:53.293979",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 69.0,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 28.333333333333332,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 70.35714285714286,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 48.133279596056255,
+      "p95_latency_ms": 128.68499755859375,
+      "p99_latency_ms": 534.1291427612305
+    }
+  },
+  {
+    "timestamp": "2026-07-11T12:28:36.986255",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 69.0,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 21.666666666666668,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 70.35714285714286,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 46.22039777891977,
+      "p95_latency_ms": 118.98422241210938,
+      "p99_latency_ms": 702.7950286865234
+    }
+  },
+  {
+    "timestamp": "2026-07-11T13:06:33.830423",
+    "metrics": {
+      "total_turns": 1400,
+      "intent_accuracy": 92.85714285714286,
+      "entity_accuracy": 69.0,
+      "conversation_accuracy": 76.21428571428571,
+      "reference_resolution_accuracy": 21.666666666666668,
+      "topic_shift_accuracy": 40.0,
+      "clarification_accuracy": 100.0,
+      "reasoning_accuracy": 100.0,
+      "confidence_accuracy": 70.35714285714286,
+      "hallucination_rate": 0.0,
+      "failure_rate": 0.0,
+      "crash_rate": 0.0,
+      "exception_count": 0,
+      "avg_latency_ms": 95.70236052785602,
+      "p95_latency_ms": 255.3117275238037,
+      "p99_latency_ms": 1601.8259525299072
+    }
+  }
+]

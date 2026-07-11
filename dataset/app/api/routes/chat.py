@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
@@ -11,7 +11,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 @router.post("/query", response_model=Dict[str, Any])
-def chat_query(payload: Dict[str, Any], request: Request, db: Session = Depends(get_db)):
+async def chat_query(payload: Dict[str, Any], request: Request, db: Session = Depends(get_db)):
     """
     Handle natural language queries by parsing, executing, and formatting results.
     Delegates entirely to SearchService.
@@ -33,7 +33,8 @@ def chat_query(payload: Dict[str, Any], request: Request, db: Session = Depends(
 
     try:
         from app.services.search_service import SearchService
-        res = SearchService.search(query, db)
+        conversation_id = payload.get("conversation_id")
+        res = await SearchService.search_async(query, db, conversation_id=conversation_id)
         res["metadata"]["query"] = query
         
         # Determine actual rows retrieved vs scanned for backwards compatibility if needed

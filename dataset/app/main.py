@@ -5,8 +5,10 @@ from fastapi import FastAPI, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+import os
+from app.services.pdf_generator import generate_pdf_report
 
 from app.core.config import settings
 from app.api.routes import health, cases, accused, reports, chat, analytics
@@ -150,6 +152,36 @@ def read_root():
         "message": "Welcome to KSP Sentinel AI API Portal",
         "documentation": "/docs"
     }
+
+@app.get("/downloads/reports/{filename}")
+def download_pdf_report(filename: str):
+    """
+    Generate and serve a PDF report natively.
+    """
+    import os
+    report_id = filename.replace(".pdf", "")
+    pdf_dir = os.path.join(os.path.dirname(__file__), "temp_reports")
+    pdf_path = os.path.join(pdf_dir, filename)
+    abs_path = os.path.abspath(pdf_path)
+    exists = os.path.exists(pdf_path)
+    
+    abs_dir_path = os.path.abspath(pdf_dir)
+    dir_listing = os.listdir(abs_dir_path) if os.path.exists(abs_dir_path) else []
+    
+    logger.info(f"Requested filename: {filename}")
+    logger.info(f"Absolute lookup path: {abs_path}")
+    logger.info(f"os.path.exists(): {exists}")
+    logger.info(f"Directory listing of {abs_dir_path}: {dir_listing}")
+    
+    if not exists:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="PDF report not found")
+        
+    return FileResponse(
+        path=pdf_path,
+        media_type="application/pdf",
+        filename=f"Investigation_Report_{report_id}.pdf"
+    )
 
 
 if __name__ == "__main__":
