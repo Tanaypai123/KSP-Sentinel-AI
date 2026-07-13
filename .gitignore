@@ -1,4 +1,13 @@
-.DS_Store
+# Generated reports
+dataset/app/temp_reports/*.pdf
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+.env.DS_Store
 node_modules/
 venv/
 dist/
