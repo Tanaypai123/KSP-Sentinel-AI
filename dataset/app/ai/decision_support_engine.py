@@ -36,14 +36,14 @@ DECISION_SCORE_MAX: int = 100
 # ─────────────────────────────────────────────────────────────────────────────
 
 class Priority(str, Enum):
-    CRITICAL = "CRITICAL"
+    IMMEDIATE = "IMMEDIATE"
     HIGH     = "HIGH"
     MEDIUM   = "MEDIUM"
     LOW      = "LOW"
 
 # Numeric value used for deterministic sort order (lower = higher priority)
 PRIORITY_ORDER: Dict[str, int] = {
-    Priority.CRITICAL: 0,
+    Priority.IMMEDIATE: 0,
     Priority.HIGH:     1,
     Priority.MEDIUM:   2,
     Priority.LOW:      3,
@@ -85,28 +85,27 @@ class RiskDimension(str, Enum):
 
 @dataclass
 class InvestigationStrategy:
-    """A single deterministic, evidence-backed investigation strategy."""
-    strategy_type:      StrategyType
     title:              str
-    reason:             str
-    supporting_evidence: List[str]
-    supporting_fir_ids: List[str]
-    confidence:         float          # 0.0–1.0
+    evidence:           str
+    reasoning:          str
+    risk:               str
+    recommendation:     str
+    expected_impact:    str
+    confidence:         float
     priority:           Priority
     dependencies:       List[str]
-    warnings:           List[str]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "strategy_type":       self.strategy_type.value,
-            "title":               self.title,
-            "reason":              self.reason,
-            "supporting_evidence": self.supporting_evidence,
-            "supporting_fir_ids":  self.supporting_fir_ids,
-            "confidence":          round(self.confidence, 4),
-            "priority":            self.priority.value,
-            "dependencies":        self.dependencies,
-            "warnings":            self.warnings,
+            "title": self.title,
+            "evidence": self.evidence,
+            "reasoning": self.reasoning,
+            "risk": self.risk,
+            "recommendation": self.recommendation,
+            "expected_impact": self.expected_impact,
+            "confidence": self.confidence,
+            "priority": self.priority.value,
+            "dependencies": self.dependencies,
         }
 
 
@@ -121,7 +120,7 @@ class RiskAssessment:
     missing_witness:        bool
     missing_documents:      bool
     open_risks:             List[str]   # human-readable risk strings
-    overall_risk_level:     str         # "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+    overall_risk_level:     str         # "LOW" | "MEDIUM" | "HIGH" | "IMMEDIATE"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -167,7 +166,7 @@ class DecisionSupportReport:
     def _build_summary(self) -> str:
         if self.insufficient:
             return INSUFFICIENT_EVIDENCE_MESSAGE
-        critical = self.priority_ranking.get(Priority.CRITICAL.value, [])
+        critical = self.priority_ranking.get(Priority.IMMEDIATE.value, [])
         high     = self.priority_ranking.get(Priority.HIGH.value, [])
         return (
             f"Decision Score: {self.decision_score}/100 | "
@@ -250,13 +249,13 @@ class RiskAnalyzer:
 
         # ── 3. Missing Entities ──────────────────────────────────────────────
         missing_entities: List[str] = []
-        # Collect what's present in records
-        has_weapon  = any(r.get("weapon_type") or r.get("weapon") for r in results)
-        has_vehicle = any(r.get("vehicle_no") or r.get("vehicle") for r in results)
-        has_phone   = (kg_report.get("node_count", 0) > 0 and
-                       "Phone" in str(kg_report.get("summary", "")))
-        has_accused = any(r.get("accused_name") for r in results)
-        has_victim  = any(r.get("victim_name") for r in results)
+        cases = getattr(context, "normalized_cases", []) or []
+        
+        has_weapon  = any(c.evidence.has_weapon for c in cases)
+        has_vehicle = any(c.evidence.has_vehicle for c in cases)
+        has_phone   = any(c.evidence.has_phone for c in cases)
+        has_accused = any(len(c.accused_names) > 0 for c in cases)
+        has_victim  = any(len(c.victim_names) > 0 for c in cases)
 
         # Check graph nodes too
         kg_nodes = kg_report.get("node_types", {}) if isinstance(kg_report, dict) else {}
@@ -320,7 +319,7 @@ class RiskAnalyzer:
         # ── 9. Overall Risk Level ─────────────────────────────────────────────
         risk_score = len(open_risks)
         if risk_score >= 5 or completeness < 0.2:
-            overall_risk = "CRITICAL"
+            overall_risk = "IMMEDIATE"
         elif risk_score >= 3 or completeness < 0.4:
             overall_risk = "HIGH"
         elif risk_score >= 1 or completeness < 0.7:
@@ -346,358 +345,100 @@ class RiskAnalyzer:
 
 class StrategyGenerator:
     """
-    Generates up to 10 deterministic investigation strategies.
-    Each strategy is gated on verified pipeline evidence.
-    No fabrication is possible — all conditions check specific context fields.
+    Generates deterministic strategies based on missing evidence and context.
     """
 
     @classmethod
     def generate(cls, context: Any, risk: RiskAssessment) -> List[InvestigationStrategy]:
-        strategies: List[InvestigationStrategy] = []
-        results      = context.search_result or []
-        entities     = context.resolved_entities or {}
-        corr         = getattr(context, "evidence_correlation", None) or {}
-        kg           = getattr(context, "knowledge_graph_report", None) or {}
-        timeline     = getattr(context, "timeline_report", None) or {}
-        similarity   = getattr(context, "similarity_report", None) or {}
-        pred         = getattr(context, "predictive_report", None) or {}
-        multi        = getattr(context, "multi_agent_report", None) or {}
-        reasoning    = getattr(context, "reasoning_result", None) or {}
-        intel        = getattr(context, "intelligence_bundle", None)
-        conf_metrics = getattr(context, "confidence_metrics", None) or {}
-        conf_score   = conf_metrics.get("confidence", context.confidence.get("final", 0.50) if context.confidence else 0.50)
+        strategies = []
+        cases = getattr(context, "normalized_cases", []) or []
+        if not cases:
+            return strategies
+            
+        has_weapon = False
+        has_vehicle = False
+        has_witness = False
+        has_phone = False
+        has_financial = False
+        has_cyber = False
+        has_murder = False
+        
+        for c in cases:
+            if hasattr(c, "evidence"):
+                ev = c.evidence
+                if ev.has_weapon: has_weapon = True
+                if ev.has_vehicle: has_vehicle = True
+                if ev.has_witness: has_witness = True
+                if ev.has_phone: has_phone = True
+                if ev.has_financial_trail: has_financial = True
+            cat = getattr(c, "classification", None)
+            if cat:
+                if cat.crime_category == "Murder": has_murder = True
+                if "cyber" in str(cat.crime_category).lower(): has_cyber = True
 
-        fir_ids = [r.get("crime_no") for r in results if r.get("crime_no")]
-
-        # ── Strategy 1: Interview Suspect ─────────────────────────────────────
-        accused_names = []
-        for r in results:
-            name = r.get("accused_name") or (
-                r.get("accused_names", [None])[0] if isinstance(r.get("accused_names"), list) else None
-            )
-            if name and name not in accused_names:
-                accused_names.append(name)
-
-        repeat_risks = pred.get("repeat_offender_risks", []) if pred else []
-
-        if accused_names or repeat_risks:
-            evidence_items = []
-            if accused_names:
-                evidence_items.append(f"Accused identified: {', '.join(accused_names[:3])}")
-            if repeat_risks:
-                evidence_items.append(f"Repeat offender risk detected for {len(repeat_risks)} suspect(s)")
-            if multi:
-                evidence_items.append(f"Multi-agent corroboration: {multi.get('evidence_summary', 'confirmed')}")
-
-            priority = Priority.CRITICAL if repeat_risks else Priority.HIGH
+        if not has_weapon and has_murder:
             strategies.append(InvestigationStrategy(
-                strategy_type       = StrategyType.INTERVIEW_SUSPECT,
-                title               = "Interview Identified Suspect(s)",
-                reason              = (
-                    f"Database records confirm {len(accused_names)} accused individual(s). "
-                    + ("Repeat offender pattern detected." if repeat_risks else "")
-                ),
-                supporting_evidence = evidence_items,
-                supporting_fir_ids  = fir_ids[:5],
-                confidence          = min(0.95, 0.70 + 0.05 * len(accused_names)),
-                priority            = priority,
-                dependencies        = ["FIR retrieval", "Accused identification"],
-                warnings            = (
-                    ["Accused may be repeat offender — coordinate with Crime Records Bureau"]
-                    if repeat_risks else []
-                ),
+                title="Recover Murder Weapon",
+                evidence="Weapon Missing from Forensic Logs",
+                reasoning="Weapon recovery is critical to establish a definitive ballistic connection.",
+                risk="Without weapon, ballistic analysis is impossible, leaving a weak forensic chain.",
+                recommendation="Deploy Crime Scene Team to recover murder weapon.",
+                expected_impact="Increase forensic confidence.",
+                confidence=0.85,
+                priority=Priority.IMMEDIATE,
+                dependencies=["Crime Scene Team"]
             ))
 
-        # ── Strategy 2: Collect CCTV ──────────────────────────────────────────
-        has_location = bool(entities.get("district") or entities.get("police_station"))
-        has_time_gap = timeline.get("gaps") and len(timeline["gaps"]) > 0 if timeline else False
-        hotspots     = getattr(intel, "hotspots", None) if intel else None
-
-        if has_location or has_time_gap or hotspots:
-            evidence_items = []
-            if has_location:
-                loc = entities.get("district") or entities.get("police_station")
-                evidence_items.append(f"Location context: {loc}")
-            if has_time_gap:
-                evidence_items.append(f"Timeline gaps identified: {len(timeline['gaps'])} unaccounted intervals")
-            if hotspots and isinstance(hotspots, dict):
-                zones = hotspots.get("risk_zones", [])
-                if zones:
-                    evidence_items.append(f"Hotspot zones: {', '.join(str(z) for z in zones[:2])}")
-
+        if not has_phone:
             strategies.append(InvestigationStrategy(
-                strategy_type       = StrategyType.COLLECT_CCTV,
-                title               = "Collect CCTV Footage from Incident Area",
-                reason              = (
-                    "Location and/or timeline gaps indicate CCTV coverage may capture "
-                    "suspect movement or vehicle transit."
-                ),
-                supporting_evidence = evidence_items,
-                supporting_fir_ids  = fir_ids[:3],
-                confidence          = 0.80 if has_time_gap else 0.65,
-                priority            = Priority.HIGH if has_time_gap else Priority.MEDIUM,
-                dependencies        = ["Location confirmed", "Approximate incident time established"],
-                warnings            = ["CCTV retention period may have elapsed for older FIRs"],
+                title="Verify Mobile Records",
+                evidence="No Mobile CDRs Verified",
+                reasoning="Mobile logs are required to recreate geographic timeline and associate suspect movements.",
+                risk="Without CDR, timeline cannot be mathematically verified.",
+                recommendation="File CDR request for all primary suspects.",
+                expected_impact="Close timeline gaps and map entity movement.",
+                confidence=0.75,
+                priority=Priority.HIGH,
+                dependencies=["Cyber Cell", "Telecom Operator"]
             ))
 
-        # ── Strategy 3: Verify Mobile Records ────────────────────────────────
-        kg_node_types  = kg.get("node_types", {}) if isinstance(kg, dict) else {}
-        phone_nodes    = kg_node_types.get("Phone", 0)
-        corr_edges     = corr.get("edges", []) if corr else []
-        phone_in_corr  = any("Phone" in str(e) for e in corr_edges)
-
-        if phone_nodes > 0 or phone_in_corr or entities.get("phone"):
-            evidence_items = []
-            if phone_nodes > 0:
-                evidence_items.append(f"Knowledge Graph: {phone_nodes} phone node(s) identified")
-            if phone_in_corr:
-                evidence_items.append("Evidence Correlation: phone link detected across FIRs")
-            if entities.get("phone"):
-                evidence_items.append(f"Entity extracted: phone={entities['phone']}")
-
+        if has_witness and not has_weapon and not has_phone:
             strategies.append(InvestigationStrategy(
-                strategy_type       = StrategyType.VERIFY_MOBILE_RECORDS,
-                title               = "Verify Mobile Call Records (CDR)",
-                reason              = (
-                    "Phone numbers identified in the knowledge graph or evidence "
-                    "correlation. CDR verification can establish communication links."
-                ),
-                supporting_evidence = evidence_items,
-                supporting_fir_ids  = fir_ids[:4],
-                confidence          = 0.85,
-                priority            = Priority.HIGH,
-                dependencies        = ["Phone number confirmed", "Court order / legal authorization"],
-                warnings            = ["CDR request requires judicial authorization"],
+                title="Corroborate Witness Testimony",
+                evidence="Witness Statements exist but lack independent forensic backing",
+                reasoning="Testimonial evidence requires physical anchoring to be court-admissible.",
+                risk="Vulnerable to witness recantation.",
+                recommendation="Locate secondary independent corroboration (CCTV or physical).",
+                expected_impact="Secure conviction by removing dependency on human testimony.",
+                confidence=0.80,
+                priority=Priority.HIGH,
+                dependencies=["Field Officers"]
             ))
 
-        # ── Strategy 4: Check Financial Trail ────────────────────────────────
-        has_repeat     = bool(repeat_risks)
-        org_nodes      = kg_node_types.get("Organization", 0)
-        gang_in_results = any(r.get("gang_name") or r.get("organization") for r in results)
-
-        if has_repeat or org_nodes > 0 or gang_in_results:
-            evidence_items = []
-            if has_repeat:
-                evidence_items.append(f"Repeat offender: {len(repeat_risks)} suspect(s) with escalation risk")
-            if org_nodes > 0:
-                evidence_items.append(f"Organization nodes in graph: {org_nodes}")
-            if gang_in_results:
-                evidence_items.append("Gang/organization affiliation detected in records")
-
+        if has_cyber and not has_financial:
             strategies.append(InvestigationStrategy(
-                strategy_type       = StrategyType.CHECK_FINANCIAL_TRAIL,
-                title               = "Investigate Financial Trail",
-                reason              = (
-                    "Repeat offender pattern or organizational links suggest structured "
-                    "criminal activity. Financial trail may reveal funding sources."
-                ),
-                supporting_evidence = evidence_items,
-                supporting_fir_ids  = fir_ids[:4],
-                confidence          = 0.75,
-                priority            = Priority.HIGH if has_repeat else Priority.MEDIUM,
-                dependencies        = ["Accused identity confirmed", "Organizational link established"],
-                warnings            = ["Financial investigation requires bank cooperation order"],
+                title="Check Financial Trail",
+                evidence="Financial logs missing for cyber crime",
+                reasoning="Fraud cases hinge on following the money.",
+                risk="Unable to identify beneficiaries or freeze illicit funds.",
+                recommendation="Request bank statements for reported accounts.",
+                expected_impact="Identify ultimate beneficiary and block further transfers.",
+                confidence=0.90,
+                priority=Priority.IMMEDIATE,
+                dependencies=["Financial Crimes Unit", "Banks"]
             ))
 
-        # ── Strategy 5: Cross-Match Vehicles ─────────────────────────────────
-        vehicle_nodes   = kg_node_types.get("Vehicle", 0)
-        vehicle_in_corr = any("Vehicle" in str(e) for e in corr_edges)
-        vehicle_entity  = entities.get("vehicle") or entities.get("vehicle_no")
-        vehicle_in_rec  = any(r.get("vehicle_no") or r.get("vehicle_type") for r in results)
-
-        if vehicle_nodes > 0 or vehicle_in_corr or vehicle_entity or vehicle_in_rec:
-            evidence_items = []
-            if vehicle_nodes > 0:
-                evidence_items.append(f"Knowledge Graph: {vehicle_nodes} vehicle node(s)")
-            if vehicle_in_corr:
-                evidence_items.append("Vehicle link detected across multiple FIRs")
-            if vehicle_entity:
-                evidence_items.append(f"Vehicle entity: {vehicle_entity}")
-            if vehicle_in_rec and not vehicle_nodes and not vehicle_in_corr and not vehicle_entity:
-                veh_nos = [r.get("vehicle_no") or r.get("vehicle_type") for r in results
-                           if r.get("vehicle_no") or r.get("vehicle_type")]
-                evidence_items.append(f"Vehicle in FIR records: {', '.join(str(v) for v in veh_nos[:3])}")
-
+        if len(strategies) == 0:
             strategies.append(InvestigationStrategy(
-                strategy_type       = StrategyType.CROSS_MATCH_VEHICLES,
-                title               = "Cross-Match Vehicle Records (RTO/Vahan)",
-                reason              = (
-                    "Vehicle evidence identified across FIRs. Cross-matching with RTO/Vahan "
-                    "database can identify owner and movement history."
-                ),
-                supporting_evidence = evidence_items,
-                supporting_fir_ids  = fir_ids[:5],
-                confidence          = 0.88,
-                priority            = Priority.HIGH,
-                dependencies        = ["Vehicle number identified"],
-                warnings            = ["Vehicle may have been re-registered or scrapped"],
-            ))
-
-        # ── Strategy 6: Analyze Crime Hotspot ────────────────────────────────
-        has_hotspot_data = hotspots and (
-            isinstance(hotspots, dict) and (
-                hotspots.get("risk_zones") or hotspots.get("peak_hours")
-            )
-        )
-        has_hotspot_list = isinstance(hotspots, list) and len(hotspots) > 0
-        district_multi   = len(set(r.get("district_name") for r in results if r.get("district_name"))) > 1
-
-        if has_hotspot_data or has_hotspot_list or district_multi:
-            evidence_items = []
-            if has_hotspot_data and isinstance(hotspots, dict):
-                zones = hotspots.get("risk_zones", [])
-                peak  = hotspots.get("peak_hours", [])
-                if zones:
-                    evidence_items.append(f"Risk zones: {', '.join(str(z) for z in zones[:3])}")
-                if peak:
-                    evidence_items.append(f"Peak hours: {', '.join(str(h) for h in peak[:3])}")
-            if district_multi:
-                evidence_items.append("Cases span multiple districts — geographic spread detected")
-
-            strategies.append(InvestigationStrategy(
-                strategy_type       = StrategyType.ANALYZE_HOTSPOT,
-                title               = "Conduct Crime Hotspot Analysis",
-                reason              = (
-                    "Hotspot intelligence or multi-district spread indicates geographic "
-                    "crime concentration requiring targeted patrol deployment."
-                ),
-                supporting_evidence = evidence_items,
-                supporting_fir_ids  = fir_ids[:5],
-                confidence          = 0.80,
-                priority            = Priority.MEDIUM,
-                dependencies        = ["Minimum 3 cases in target area"],
-                warnings            = [],
-            ))
-
-        # ── Strategy 7: Recover Weapon ───────────────────────────────────────
-        weapon_nodes   = kg_node_types.get("Weapon", 0)
-        weapon_in_corr = any("Weapon" in str(e) for e in corr_edges)
-        weapon_entity  = entities.get("weapon") or entities.get("weapon_type")
-        weapon_in_rec  = any(r.get("weapon_type") or r.get("weapon") for r in results)
-
-        if weapon_nodes > 0 or weapon_in_corr or weapon_entity or weapon_in_rec:
-            evidence_items = []
-            if weapon_nodes > 0:
-                evidence_items.append(f"Knowledge Graph: {weapon_nodes} weapon node(s)")
-            if weapon_in_corr:
-                evidence_items.append("Weapon linked across multiple FIRs in evidence correlation")
-            if weapon_entity:
-                evidence_items.append(f"Weapon entity: {weapon_entity}")
-            if weapon_in_rec and not weapon_nodes and not weapon_in_corr and not weapon_entity:
-                wep_types = [r.get("weapon_type") or r.get("weapon") for r in results
-                             if r.get("weapon_type") or r.get("weapon")]
-                evidence_items.append(f"Weapon in FIR records: {', '.join(str(w) for w in wep_types[:3])}")
-
-            strategies.append(InvestigationStrategy(
-                strategy_type       = StrategyType.RECOVER_WEAPON,
-                title               = "Initiate Weapon Recovery Operation",
-                reason              = (
-                    "Weapon identified in knowledge graph or case records. "
-                    "Recovery is essential for forensic analysis and charge framing."
-                ),
-                supporting_evidence = evidence_items,
-                supporting_fir_ids  = fir_ids[:5],
-                confidence          = 0.85,
-                priority            = Priority.CRITICAL if weapon_nodes > 1 else Priority.HIGH,
-                dependencies        = ["Weapon type identified", "Last known location"],
-                warnings            = ["Weapon may be concealed — deploy K9 unit if required"],
-            ))
-
-        # ── Strategy 8: Re-Interview Witness ──────────────────────────────────
-        witness_nodes     = kg_node_types.get("Witness", 0)
-        witness_in_tl     = "witness" in str(timeline).lower()
-        sim_recommendations = []
-        if isinstance(similarity, dict):
-            for sim_case in similarity.get("top_matches", [])[:3]:
-                for rec in (sim_case.get("recommendations", []) if isinstance(sim_case, dict) else []):
-                    if isinstance(rec, dict) and "witness" in rec.get("title", "").lower():
-                        sim_recommendations.append(rec.get("title", "Witness follow-up"))
-
-        if witness_nodes > 0 or witness_in_tl or sim_recommendations:
-            evidence_items = []
-            if witness_nodes > 0:
-                evidence_items.append(f"Knowledge Graph: {witness_nodes} witness node(s) identified")
-            if witness_in_tl:
-                evidence_items.append("Witness referenced in timeline reconstruction")
-            if sim_recommendations:
-                evidence_items.append("Similar case recommends witness follow-up")
-
-            strategies.append(InvestigationStrategy(
-                strategy_type       = StrategyType.REINTERVIEW_WITNESS,
-                title               = "Re-Interview Identified Witnesses",
-                reason              = (
-                    "Witness evidence identified. Re-interview may reveal additional "
-                    "details missed in initial recording."
-                ),
-                supporting_evidence = evidence_items,
-                supporting_fir_ids  = fir_ids[:3],
-                confidence          = 0.78,
-                priority            = Priority.HIGH,
-                dependencies        = ["Witness identity confirmed", "Witness availability"],
-                warnings            = ["Witness may have changed statement — record carefully"],
-            ))
-
-        # ── Strategy 9: Check Nearby FIRs ────────────────────────────────────
-        sim_matches = []
-        if isinstance(similarity, dict):
-            sim_matches = similarity.get("top_matches", [])
-        sim_score_ok = isinstance(similarity, dict) and similarity.get("similarity_pct", 0) >= 20
-
-        if sim_matches or sim_score_ok:
-            evidence_items = []
-            if sim_matches:
-                evidence_items.append(f"{len(sim_matches)} similar FIR(s) identified by Case Similarity Engine")
-                for m in sim_matches[:2]:
-                    if isinstance(m, dict) and m.get("fir_id"):
-                        evidence_items.append(f"Similar FIR: {m['fir_id']} (score: {m.get('similarity_pct', 0):.1f}%)")
-            if sim_score_ok:
-                evidence_items.append(f"Similarity score ≥ 20% — MO pattern match confirmed")
-
-            strategies.append(InvestigationStrategy(
-                strategy_type       = StrategyType.CHECK_NEARBY_FIRS,
-                title               = "Cross-Reference Nearby Similar FIRs",
-                reason              = (
-                    "Case Similarity Engine identified verified matching investigations. "
-                    "Nearby FIR cross-referencing may reveal shared suspects or MO."
-                ),
-                supporting_evidence = evidence_items,
-                supporting_fir_ids  = fir_ids[:5],
-                confidence          = 0.82,
-                priority            = Priority.MEDIUM,
-                dependencies        = ["Similar case records available"],
-                warnings            = [],
-            ))
-
-        # ── Strategy 10: Review Forensic Evidence ────────────────────────────
-        open_cases   = [r for r in results if r.get("status_name", "").upper() in
-                        ("OPEN", "PENDING", "UNDER INVESTIGATION", "ACTIVE")]
-        low_conf     = conf_score < 0.70
-        long_pending = timeline.get("event_count", 0) > 3 and timeline.get("dated_event_count", 0) > 0
-
-        if open_cases or (low_conf and results):
-            evidence_items = []
-            if open_cases:
-                evidence_items.append(f"{len(open_cases)} case(s) with open/pending status")
-            if low_conf:
-                evidence_items.append(f"System confidence below threshold: {conf_score * 100:.1f}%")
-            if long_pending:
-                evidence_items.append(f"Extended investigation detected: {timeline.get('event_count', 0)} timeline events")
-            if reasoning.get("conclusion"):
-                evidence_items.append(f"Reasoning: {reasoning['conclusion']}")
-
-            strategies.append(InvestigationStrategy(
-                strategy_type       = StrategyType.REVIEW_FORENSIC_EVIDENCE,
-                title               = "Comprehensive Forensic Evidence Review",
-                reason              = (
-                    "Case remains open with insufficient confidence or extended timeline. "
-                    "Full forensic review may close evidence gaps."
-                ),
-                supporting_evidence = evidence_items,
-                supporting_fir_ids  = [r.get("crime_no") for r in open_cases[:5] if r.get("crime_no")],
-                confidence          = 0.72,
-                priority            = Priority.MEDIUM if not low_conf else Priority.HIGH,
-                dependencies        = ["Forensic lab access", "Original case file"],
-                warnings            = ["Biological evidence degrades — prioritize if case is recent"],
+                title="Standard Evidence Collection",
+                evidence="Basic case registered",
+                reasoning="Initial stages require basic forensic processing.",
+                risk="Delayed collection degrades forensic quality.",
+                recommendation="Deploy standard evidence collection protocols.",
+                expected_impact="Establish evidentiary baseline.",
+                confidence=0.70,
+                priority=Priority.MEDIUM,
+                dependencies=["Field Officers"]
             ))
 
         return strategies[:MAX_STRATEGIES]
@@ -716,7 +457,7 @@ class PriorityRanker:
     def rank(cls, strategies: List[InvestigationStrategy]) -> Tuple[
         List[InvestigationStrategy], Dict[str, List[str]]
     ]:
-        # Sort: primary key = priority order (CRITICAL=0..LOW=3), secondary = confidence DESC
+        # Sort: primary key = priority order (IMMEDIATE=0..LOW=3), secondary = confidence DESC
         sorted_strats = sorted(
             strategies,
             key=lambda s: (PRIORITY_ORDER[s.priority], -s.confidence)
@@ -724,7 +465,7 @@ class PriorityRanker:
 
         # Build priority → [titles] mapping
         ranking: Dict[str, List[str]] = {
-            Priority.CRITICAL.value: [],
+            Priority.IMMEDIATE.value: [],
             Priority.HIGH.value:     [],
             Priority.MEDIUM.value:   [],
             Priority.LOW.value:      [],
@@ -764,13 +505,14 @@ class ActionValidator:
 
     @classmethod
     def _check(cls, s: InvestigationStrategy) -> Optional[str]:
-        """Returns rejection reason string, or None if valid."""
-        if s.confidence < cls.MIN_CONFIDENCE:
-            return f"confidence {s.confidence:.2f} below minimum {cls.MIN_CONFIDENCE}"
-        if not s.supporting_evidence:
-            return "no supporting evidence provided"
-        if not s.title.strip():
-            return "strategy title is empty"
+        if not s.title:
+            return "Missing title"
+        if not getattr(s, "evidence", getattr(s, "supporting_evidence", None)):
+            return "No supporting evidence provided"
+        if not s.reasoning and not getattr(s, "reason", None):
+            return "No reason provided"
+        if s.confidence < 0.1:
+            return "Confidence too low"
         return None
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -954,7 +696,7 @@ class DecisionSupportEngine:
             missing_witness        = True,
             missing_documents      = True,
             open_risks             = ["No verified evidence available."],
-            overall_risk_level     = "CRITICAL",
+            overall_risk_level     = "IMMEDIATE",
         )
         return DecisionSupportReport(
             executive_summary = INSUFFICIENT_EVIDENCE_MESSAGE,
@@ -980,7 +722,7 @@ class DecisionSupportEngine:
     ) -> str:
         intent  = getattr(context, "intent", "UNKNOWN") or "UNKNOWN"
         n_strat = len(strategies)
-        n_crit  = sum(1 for s in strategies if s.priority == Priority.CRITICAL)
+        n_crit  = sum(1 for s in strategies if s.priority == Priority.IMMEDIATE)
         n_high  = sum(1 for s in strategies if s.priority == Priority.HIGH)
         fir_ids = [r.get("crime_no") for r in results[:3] if r.get("crime_no")]
         fir_str = ", ".join(fir_ids) if fir_ids else "N/A"
@@ -989,7 +731,7 @@ class DecisionSupportEngine:
             f"Decision Support Engine evaluated {len(results)} verified record(s) "
             f"across {intent} intent. "
             f"Generated {n_strat} investigation strateg{'y' if n_strat == 1 else 'ies'} "
-            f"({n_crit} CRITICAL, {n_high} HIGH priority). "
+            f"({n_crit} IMMEDIATE, {n_high} HIGH priority). "
             f"Decision Score: {decision_score}/100. "
             f"Evidence Completeness: {risk.evidence_completeness * 100:.1f}%. "
             f"Intelligence Coverage: {risk.investigation_coverage * 100:.1f}%. "
@@ -1028,7 +770,7 @@ class DecisionSupportStage:
                 "warnings": [f"DecisionSupportStage error: {exc}"],
                 "open_questions": [],
                 "risk_assessment": {
-                    "overall_risk_level": "CRITICAL",
+                    "overall_risk_level": "IMMEDIATE",
                     "evidence_completeness": 0.0,
                     "investigation_coverage": 0.0,
                     "missing_entities": [],

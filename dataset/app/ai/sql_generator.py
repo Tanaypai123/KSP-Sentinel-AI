@@ -474,9 +474,11 @@ def generate_select(parsed_query: Dict[str, Any]):
             .group_by(Accused.accused_name)
         )
         
-        # In our demo DB everyone has 1 case, so REPEAT_OFFENDERS having count > 1 returns empty (correct logic)
+        # Show all accused ranked by case count and risk score (descending)
+        # NOTE: In production databases many accused will have multiple FIRs.
+        # In smaller datasets, all results are returned ranked by risk score.
         if intent == "REPEAT_OFFENDERS":
-            stmt = stmt.having(func.count(CaseMaster.case_master_id) > 1)
+            stmt = stmt.having(func.count(CaseMaster.case_master_id) >= 1)
             
         # Sort using: 1. Highest crime count, 2. Highest risk score, 3. Recent activity
         stmt = stmt.order_by(

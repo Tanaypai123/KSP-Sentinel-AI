@@ -170,7 +170,15 @@ class ConversationEngine:
         state.last_results = results
         
         if results and ("crime_no" in results[0] or "fir_no" in results[0] or "case_no" in results[0]):
-            state._active_records = results[:3]
+            def _get_rec_id(r):
+                return r.get("crime_no") or r.get("case_no") or r.get("fir_no")
+            for rec in results[:3]:
+                rec_id = _get_rec_id(rec)
+                already_tracked = any(_get_rec_id(a) == rec_id for a in state._active_records)
+                if not already_tracked:
+                    state._active_records.insert(0, rec)
+                    if len(state._active_records) > 3:
+                        state._active_records.pop()
             
         state.updated_at = datetime.now()
         cls.get_store().save(conversation_id, state)
@@ -258,5 +266,12 @@ class ConversationEngine:
                 elif merged_intent == "SEARCH_VICTIMS":
                     cls.set_active_record(conversation_id, results[0], "VICTIM")
             
-        cls.get_store().save(conversation_id, state)
+        # Reload from store to merge/preserve changes made by helper methods (e.g. set_active_record)
+        final_state = cls.get_state(conversation_id)
+        final_state.last_intent = state.last_intent
+        final_state.last_query = state.last_query
+        final_state.last_entities = state.last_entities
+        final_state.conversation_depth = state.conversation_depth
+        final_state.updated_at = datetime.now()
+        cls.get_store().save(conversation_id, final_state)
         return {"intent": merged_intent, "entities": merged_entities, "_is_followup": is_followup}

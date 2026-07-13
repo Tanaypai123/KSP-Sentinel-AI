@@ -55,7 +55,17 @@ _STRONG_TRIGGERS = {
     Intent.HOTSPOT: [r"\bhotspots?\b", r"\bheat\s+map\b", r"\barea.*high.*crime\b"],
     Intent.SEARCH_ACCUSED: [r"\baccused\b", r"\bsuspect\b", r"\bcriminal\b", r"named\s+\w+"],
     Intent.SEARCH_VICTIMS: [r"\bvictims?\b", r"\binjured\b"],
-    Intent.REPORTS: [r"\breport\b", r"\bdashboard\b"],
+    # BUG 2 FIX: REPORTS must score much higher than FIR_LOOKUP/SEARCH_CASES for
+    # "generate report" / "investigation report" queries. Previously it only had one
+    # general pattern \breport\b which tied with SEARCH_CASES crime patterns.
+    Intent.REPORTS: [
+        r"\bgenerate\s+report\b", r"\bgenerate\s+investigation\s+report\b",
+        r"\bcreate\s+report\b", r"\bprepare\s+report\b", r"\bbuild\s+report\b",
+        r"\bexport\s+report\b", r"\bdownload\s+report\b",
+        r"\binvestigation\s+report\b", r"\bofficer\s+report\b",
+        r"\breport\s+for\s+this\s+fir\b", r"\breport\s+for\s+this\s+case\b",
+        r"\bcase\s+report\b", r"\bfir\s+report\b"
+    ],
     Intent.FIR_LOOKUP: [r"\bfir\b", r"\bcase\b", r"\bcrime\s+(?:no\.?|number)\b", r"\bksp-\d{4,}\b"],
     Intent.REPEAT_OFFENDERS: [r"\brepeat\s+offender", r"\bhabitual\s+offender", r"\bserial\s+offender"],
     Intent.MOST_WANTED: [r"\bmost\s+wanted\b", r"\bhigh\s+risk\s+accused\b"],
@@ -132,6 +142,15 @@ _PATTERNS_REPORTS: List[str] = [
     r"\breport\b",
     r"\bdashboard\b",
     r"statistics\s+dashboard",
+    # BUG 2 FIX: Additional patterns for report generation queries
+    r"\bgenerate\s+report\b",
+    r"\bcreate\s+report\b",
+    r"\bprepare\s+report\b",
+    r"\binvestigation\s+report\b",
+    r"\bofficer\s+report\b",
+    r"\bcase\s+report\b",
+    r"\bfir\s+report\b",
+    r"\bexport\s+report\b",
 ]
 
 _PATTERNS_SEARCH_CASES: List[str] = [

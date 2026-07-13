@@ -148,6 +148,22 @@ class IntentRouter:
             result.confidence = 0.92
             return result
 
+        # Timeline / chronological overrides (placed before classification to avoid short-circuiting)
+        if has_active_fir:
+            timeline_keywords = {"first", "earliest", "start", "begin", "last", "latest", "end", "conclude", "timeline", "chronology", "sequence", "happen first", "happen last"}
+            if any(k in q_low for k in timeline_keywords) and not "explain" in q_low:
+                result.intent = "FIR_LOOKUP"
+                result.confidence = 0.95
+                result.is_fir_open_query = True
+                return result
+
+        # Network / Relationship Graph overrides (placed before classification to avoid short-circuiting)
+        network_keywords = {"network", "graph", "connection", "connected", "relationship", "relationships", "linked", "associate", "knowledge graph", "crime network", "accused network"}
+        if any(k in q_low for k in network_keywords):
+            result.intent = "NETWORK_SEARCH"
+            result.confidence = 0.94
+            return result
+
         # 1. Multi-Intent Check
         if " and " in normalized_query.lower():
             parts = normalized_query.lower().split(" and ")
@@ -180,9 +196,13 @@ class IntentRouter:
         # 6. Context Resolution & Regex Overrides
         if is_followup_intent or "similar" in q_low or "compare" in q_low:
             if "compare" in q_low:
+                result.intent = "COMPARE_CASES"
+                result.confidence = 0.95
                 result.is_comparison = True
                 return result
             elif "similar" in q_low and has_active_fir:
+                result.intent = "SEARCH_CASES"
+                result.confidence = 0.90
                 result.is_similar_search = True
                 return result
                 
@@ -207,7 +227,7 @@ class IntentRouter:
                 result.intent = "CRIME_TREND"
                 result.is_date_query = True
             elif intent_val == "FIR_LOOKUP":
-                if q_low.startswith("open another") or q_low.startswith("open the") or q_low.startswith("open fir") or q_low.startswith("show fir"):
+                if q_low.startswith("open another") or q_low.startswith("open the") or q_low.startswith("open fir") or q_low.startswith("show fir") or "previous" in q_low or "last" in q_low or "next" in q_low:
                     result.is_fir_open_query = True
 
         return result

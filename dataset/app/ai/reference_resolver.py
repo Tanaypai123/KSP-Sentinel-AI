@@ -13,6 +13,11 @@ class ReferenceResolver:
         query_lower = query.lower()
         mem = MemoryEngine.get_memory(state.conversation_id)
         
+        # Timeline chronological questions on the active FIR should bypass reference resolution
+        timeline_keywords = ["happen", "occur", "event", "chronology", "sequence"]
+        if state.active_fir and any(x in query_lower for x in timeline_keywords):
+            return False, None, None
+            
         # 1. Active Pointers
         active_pointers = r"\b(this|that|opened|same|current)\s+(fir|case|record)\b"
         if re.search(active_pointers, query_lower):

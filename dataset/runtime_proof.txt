@@ -1,0 +1,1473 @@
+
+===========================================================
+RUNTIME PROOF FOR QUERY: 'Open FIR KSP-000012'
+===========================================================
+
+--- 1. PIPELINE EXECUTION ORDER ---
+-> {'stage': 'IntentRouterStage', 'start': 1783793332.3726, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8188329}
+-> {'stage': 'ConversationEngineStage', 'start': 1783793332.818835, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.820321}
+-> {'stage': 'ClarificationResolutionStage', 'start': 1783793332.820322, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.820329}
+-> {'stage': 'ReferenceResolverStage', 'start': 1783793332.82033, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8207302}
+-> {'stage': 'PronounResolverStage', 'start': 1783793332.820731, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.820822}
+-> {'stage': 'ClarificationCheckStage', 'start': 1783793332.820823, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8222542}
+-> {'stage': 'QueryPlannerStage', 'start': 1783793332.8222551, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8225431}
+-> {'stage': 'SearchServiceStage', 'start': 1783793332.822546, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.87478}
+-> {'stage': 'ContextNormalizerStage', 'start': 1783793332.8747818, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.884267}
+-> {'stage': 'IntelligenceEngineStage', 'start': 1783793332.884268, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8842921}
+-> {'stage': 'EvidenceCorrelationStage', 'start': 1783793332.884293, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8861818}
+-> {'stage': 'ReasoningEngineStage', 'start': 1783793332.886183, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.886199}
+-> {'stage': 'InvestigationReasoningEngineStage', 'start': 1783793332.886199, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.886976}
+-> {'stage': 'KnowledgeGraphStage', 'start': 1783793332.886977, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8871412}
+-> {'stage': 'TimelineStage', 'start': 1783793332.887142, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.887664}
+-> {'stage': 'CaseSimilarityStage', 'start': 1783793332.8876648, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8877609}
+-> {'stage': 'DecisionSupportStage', 'start': 1783793332.8877618, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8878632}
+-> {'stage': 'MultiAgentEngineStage', 'start': 1783793332.887864, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.887907}
+-> {'stage': 'PredictiveEngineStage', 'start': 1783793332.887908, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8879402}
+-> {'stage': 'ConfidenceEngineStage', 'start': 1783793332.8879411, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8879511}
+-> {'stage': 'HallucinationGuardStage', 'start': 1783793332.8879519, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.887965}
+-> {'stage': 'ExplainabilityEngineStage', 'start': 1783793332.887965, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8888}
+-> {'stage': 'MemoryEngineStage', 'start': 1783793332.888801, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.888868}
+-> {'stage': 'ResponseGeneratorStage', 'start': 1783793332.888869, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.889104}
+
+--- 2. CONTEXT.INVESTIGATION_REASONING OBJECT ---
+InvestigationReasoningResult(correlated_evidence=[],
+                             contradictions=[Contradiction(description='No '
+                                                                       'conflicting '
+                                                                       'evidence '
+                                                                       'detected.')],
+                             limitations=[InvestigationLimitation(limitation_type='Forensic '
+                                                                                  'pending',
+                                                                  description='Missing '
+                                                                              'Murder '
+                                                                              'Weapon',
+                                                                  impact='Limits '
+                                                                         'forensic '
+                                                                         'certainty.'),
+                                          InvestigationLimitation(limitation_type='Data '
+                                                                                  'unavailable',
+                                                                  description='Missing '
+                                                                              'Mobile '
+                                                                              'CDR',
+                                                                  impact='Movement '
+                                                                         'reconstruction '
+                                                                         'incomplete.')],
+                             officer_insights=[OfficerInsight(insight='Witness '
+                                                                      'testimony '
+                                                                      'requires '
+                                                                      'independent '
+                                                                      'corroboration.',
+                                                              reason='Witness '
+                                                                     'testimony '
+                                                                     'currently '
+                                                                     'stands '
+                                                                     'alone. '
+                                                                     'No CCTV, '
+                                                                     'No Phone '
+                                                                     'Records, '
+                                                                     'No DNA. '
+                                                                     'Court '
+                                                                     'reliability '
+                                                                     'may '
+                                                                     'decrease.',
+                                                              supporting_evidence=['Witness '
+                                                                                   'Statements'],
+                                                              investigation_impact='Priority: '
+                                                                                   'Locate '
+                                                                                   'independent '
+                                                                                   'corroboration. '
+                                                                                   'Vulnerable '
+                                                                                   'to '
+                                                                                   'recantation '
+                                                                                   'during '
+                                                                                   'trial.')],
+                             investigation_conclusion=InvestigationConclusion(evidence_strength='Low',
+                                                                              remaining_gaps=['Missing '
+                                                                                              'Murder '
+                                                                                              'Weapon',
+                                                                                              'Missing '
+                                                                                              'Mobile '
+                                                                                              'CDR'],
+                                                                              strongest_evidence='Witness '
+                                                                                                 'Statement',
+                                                                              weakest_evidence='Forensics',
+                                                                              probability_of_successful_prosecution='Low',
+                                                                              critical_next_step='Halt '
+                                                                                                 'advanced '
+                                                                                                 'analytics; '
+                                                                                                 'return '
+                                                                                                 'to '
+                                                                                                 'fundamental '
+                                                                                                 'scene '
+                                                                                                 'sweeps.',
+                                                                              overall_investigation_readiness='Requires '
+                                                                                                              'more '
+                                                                                                              'evidence',
+                                                                              supporting_evidence=['KSP-0012',
+                                                                                                   'KSP-000012']))
+
+--- 3. INVESTIGATION BRIEF OBJECT ---
+InvestigationBrief(executive_summary='This is a violent crime investigation '
+                                     '(Homicide). High-priority forensic and '
+                                     'timeline reconstruction is in progress.',
+                   investigation_priority=InvestigationPriority(level='IMMEDIATE',
+                                                                reason='Known '
+                                                                       'repeat '
+                                                                       'offenders '
+                                                                       'identified. '
+                                                                       'Immediate '
+                                                                       'apprehension '
+                                                                       'required '
+                                                                       'to '
+                                                                       'prevent '
+                                                                       'further '
+                                                                       'offenses.'),
+                   investigation_progress=InvestigationProgress(tasks=[InvestigationTask(task='Crime '
+                                                                                              'Scene',
+                                                                                         status='Completed'),
+                                                                       InvestigationTask(task='Weapon '
+                                                                                              'Recovery',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Witness '
+                                                                                              'Interview',
+                                                                                         status='Completed'),
+                                                                       InvestigationTask(task='CDR',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Forensics',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Chargesheet',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Arrest',
+                                                                                         status='Pending')],
+                                                                completion_pct=28),
+                   collected_evidence=[EvidenceItem(label='Witness Statements',
+                                                    verification_status='Pending '
+                                                                        'Verification',
+                                                    strength='Medium',
+                                                    source='Field Officer '
+                                                           'Report'),
+                                       EvidenceItem(label='FIR Report',
+                                                    verification_status='Verified',
+                                                    strength='High',
+                                                    source='Case Master')],
+                   missing_critical_evidence=[EvidenceItem(label='Murder '
+                                                                 'Weapon',
+                                                           verification_status='Missing',
+                                                           strength='High',
+                                                           source='Crime '
+                                                                  'Scene')],
+                   key_findings=['Linked Records: 2 verified records suggest a '
+                                 'pattern.',
+                                 'Knowledge graph constructed: 12 nodes, 12 '
+                                 'edges. Connected components: 2.'],
+                   risk_assessment=[RiskItem(level='IMMEDIATE',
+                                             reason='Weapon not recovered or '
+                                                    'identified — forensic '
+                                                    'gap.',
+                                             evidence_used=['Case Master Data',
+                                                            'Forensic / '
+                                                            'Seizure Logs']),
+                                    RiskItem(level='IMMEDIATE',
+                                             reason='No vehicle linked — CCTV '
+                                                    'cross-match not yet '
+                                                    'possible.',
+                                             evidence_used=['Case Master '
+                                                            'Data'])],
+                   recommendations=[],
+                   confidence_explanation=ConfidenceExplanation(score=0.5499999999999999,
+                                                                positive_factors=['Base '
+                                                                                  'confidence '
+                                                                                  'established '
+                                                                                  'from '
+                                                                                  '2 '
+                                                                                  'active '
+                                                                                  'case '
+                                                                                  'records.',
+                                                                                  'Verified '
+                                                                                  'witness '
+                                                                                  'statements '
+                                                                                  '(+15%).',
+                                                                                  'Timeline '
+                                                                                  'sequence '
+                                                                                  'mathematically '
+                                                                                  'contiguous '
+                                                                                  '(+10%).',
+                                                                                  'Knowledge '
+                                                                                  'Graph '
+                                                                                  'confirmed '
+                                                                                  'entity '
+                                                                                  'connections '
+                                                                                  '(+10%).'],
+                                                                negative_factors=[],
+                                                                calculation_summary='Base(0.20) '
+                                                                                    '+ '
+                                                                                    'Witness(0.15) '
+                                                                                    '+ '
+                                                                                    'Forensic(0.0) '
+                                                                                    '+ '
+                                                                                    'Digital(0.0) '
+                                                                                    '+ '
+                                                                                    'Timeline(0.1) '
+                                                                                    '+ '
+                                                                                    'KG(0.1) '
+                                                                                    '- '
+                                                                                    'Penalties(0.0) '
+                                                                                    '= '
+                                                                                    '0.55'),
+                   correlated_evidence=[],
+                   investigation_limitations=[InvestigationLimitation(limitation_type='Forensic '
+                                                                                      'pending',
+                                                                      description='Missing '
+                                                                                  'Murder '
+                                                                                  'Weapon',
+                                                                      impact='Limits '
+                                                                             'forensic '
+                                                                             'certainty.'),
+                                              InvestigationLimitation(limitation_type='Data '
+                                                                                      'unavailable',
+                                                                      description='Missing '
+                                                                                  'Mobile '
+                                                                                  'CDR',
+                                                                      impact='Movement '
+                                                                             'reconstruction '
+                                                                             'incomplete.')],
+                   contradictions=[Contradiction(description='No conflicting '
+                                                             'evidence '
+                                                             'detected.')],
+                   officer_insights=[OfficerInsight(insight='Witness testimony '
+                                                            'requires '
+                                                            'independent '
+                                                            'corroboration.',
+                                                    reason='Witness testimony '
+                                                           'currently stands '
+                                                           'alone. No CCTV, No '
+                                                           'Phone Records, No '
+                                                           'DNA. Court '
+                                                           'reliability may '
+                                                           'decrease.',
+                                                    supporting_evidence=['Witness '
+                                                                         'Statements'],
+                                                    investigation_impact='Priority: '
+                                                                         'Locate '
+                                                                         'independent '
+                                                                         'corroboration. '
+                                                                         'Vulnerable '
+                                                                         'to '
+                                                                         'recantation '
+                                                                         'during '
+                                                                         'trial.')],
+                   investigation_conclusion=InvestigationConclusion(evidence_strength='Low',
+                                                                    remaining_gaps=['Missing '
+                                                                                    'Murder '
+                                                                                    'Weapon',
+                                                                                    'Missing '
+                                                                                    'Mobile '
+                                                                                    'CDR'],
+                                                                    strongest_evidence='Witness '
+                                                                                       'Statement',
+                                                                    weakest_evidence='Forensics',
+                                                                    probability_of_successful_prosecution='Low',
+                                                                    critical_next_step='Halt '
+                                                                                       'advanced '
+                                                                                       'analytics; '
+                                                                                       'return '
+                                                                                       'to '
+                                                                                       'fundamental '
+                                                                                       'scene '
+                                                                                       'sweeps.',
+                                                                    overall_investigation_readiness='Requires '
+                                                                                                    'more '
+                                                                                                    'evidence',
+                                                                    supporting_evidence=['KSP-0012',
+                                                                                         'KSP-000012']))
+
+--- 4. FINAL RENDERED RESPONSE ---
+📋 EXECUTIVE SUMMARY
+
+This is a violent crime investigation (Homicide). High-priority forensic and timeline reconstruction is in progress.
+
+────────────────────────────────────────────
+
+🚨 INVESTIGATION PRIORITY
+
+Priority : 🔴 IMMEDIATE
+
+Reason : Known repeat offenders identified. Immediate apprehension required to prevent further offenses.
+
+────────────────────────────────────────────
+
+📈 INVESTIGATION PROGRESS
+
+Overall Completion: 28%
+
+• ✅ Crime Scene: Completed
+• ⏳ Weapon Recovery: Pending
+• ✅ Witness Interview: Completed
+• ⏳ CDR: Pending
+• ⏳ Forensics: Pending
+• ⏳ Chargesheet: Pending
+• ⏳ Arrest: Pending
+
+────────────────────────────────────────────
+
+🔍 EVIDENCE SUMMARY
+
+**Collected Evidence**
+
+• **Witness Statements**
+  Status: Pending Verification | Strength: Medium | Source: Field Officer Report
+
+• **FIR Report**
+  Status: Verified | Strength: High | Source: Case Master
+
+**Missing Critical Evidence**
+
+• **Murder Weapon**
+  Status: Missing | Target Source: Crime Scene
+
+────────────────────────────────────────────
+
+⚠️ CONTRADICTION ANALYSIS
+
+• No conflicting evidence detected.
+
+────────────────────────────────────────────
+
+⚠️ RISK ASSESSMENT
+
+**Level:** 🔴 IMMEDIATE
+**Reason:** Weapon not recovered or identified — forensic gap.
+**Evidence Used:** Case Master Data, Forensic / Seizure Logs
+
+**Level:** 🔴 IMMEDIATE
+**Reason:** No vehicle linked — CCTV cross-match not yet possible.
+**Evidence Used:** Case Master Data
+
+────────────────────────────────────────────
+
+🕵️ OFFICER INSIGHTS
+
+**Insight:** Witness testimony requires independent corroboration.
+**Why:** Witness testimony currently stands alone. No CCTV, No Phone Records, No DNA. Court reliability may decrease.
+**Supporting Evidence:** Witness Statements
+**Investigation Impact:** Priority: Locate independent corroboration. Vulnerable to recantation during trial.
+
+────────────────────────────────────────────
+
+⚖️ INVESTIGATION CONCLUSION
+
+**Overall Investigation Readiness:** Requires more evidence
+**Evidence Strength:** Low
+**Strongest Evidence:** Witness Statement
+**Weakest Evidence:** Forensics
+**Probability of Successful Prosecution:** Low
+**Remaining Gaps:** Missing Murder Weapon, Missing Mobile CDR
+**Critical Next Step:** Halt advanced analytics; return to fundamental scene sweeps.
+**Supporting Records:** KSP-0012, KSP-000012
+
+────────────────────────────────────────────
+
+🛑 INVESTIGATION LIMITATIONS
+
+**Forensic pending:** Missing Murder Weapon
+**Impact:** Limits forensic certainty.
+
+**Data unavailable:** Missing Mobile CDR
+**Impact:** Movement reconstruction incomplete.
+
+────────────────────────────────────────────
+
+📊 CONFIDENCE METRICS
+
+**Final Confidence:** 54%
+
+**Positive Factors:**
+• Base confidence established from 2 active case records.
+• Verified witness statements (+15%).
+• Timeline sequence mathematically contiguous (+10%).
+• Knowledge Graph confirmed entity connections (+10%).
+
+**Final Formula:**
+Base(0.20) + Witness(0.15) + Forensic(0.0) + Digital(0.0) + Timeline(0.1) + KG(0.1) - Penalties(0.0) = 0.55
+
+────────────────────────────────────────────
+
+===========================================================
+RUNTIME PROOF FOR QUERY: 'Open FIR KSP-000004'
+===========================================================
+
+--- 1. PIPELINE EXECUTION ORDER ---
+-> {'stage': 'IntentRouterStage', 'start': 1783793332.890802, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.895039}
+-> {'stage': 'ConversationEngineStage', 'start': 1783793332.895041, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.895054}
+-> {'stage': 'ClarificationResolutionStage', 'start': 1783793332.895054, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8950589}
+-> {'stage': 'ReferenceResolverStage', 'start': 1783793332.89506, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8950741}
+-> {'stage': 'PronounResolverStage', 'start': 1783793332.895075, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.8950799}
+-> {'stage': 'ClarificationCheckStage', 'start': 1783793332.895081, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.896429}
+-> {'stage': 'QueryPlannerStage', 'start': 1783793332.89643, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.896436}
+-> {'stage': 'SearchServiceStage', 'start': 1783793332.8964381, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.906678}
+-> {'stage': 'ContextNormalizerStage', 'start': 1783793332.9066792, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.911266}
+-> {'stage': 'IntelligenceEngineStage', 'start': 1783793332.911267, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9112818}
+-> {'stage': 'EvidenceCorrelationStage', 'start': 1783793332.9112818, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.911343}
+-> {'stage': 'ReasoningEngineStage', 'start': 1783793332.911344, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.911354}
+-> {'stage': 'InvestigationReasoningEngineStage', 'start': 1783793332.911354, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.911374}
+-> {'stage': 'KnowledgeGraphStage', 'start': 1783793332.911374, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.911484}
+-> {'stage': 'TimelineStage', 'start': 1783793332.911484, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.911603}
+-> {'stage': 'CaseSimilarityStage', 'start': 1783793332.911603, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.911676}
+-> {'stage': 'DecisionSupportStage', 'start': 1783793332.911676, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9117608}
+-> {'stage': 'MultiAgentEngineStage', 'start': 1783793332.9117608, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.911797}
+-> {'stage': 'PredictiveEngineStage', 'start': 1783793332.911798, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.911824}
+-> {'stage': 'ConfidenceEngineStage', 'start': 1783793332.911824, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.911834}
+-> {'stage': 'HallucinationGuardStage', 'start': 1783793332.911835, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.911846}
+-> {'stage': 'ExplainabilityEngineStage', 'start': 1783793332.911846, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.91267}
+-> {'stage': 'MemoryEngineStage', 'start': 1783793332.912671, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.912727}
+-> {'stage': 'ResponseGeneratorStage', 'start': 1783793332.912728, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.912914}
+
+--- 2. CONTEXT.INVESTIGATION_REASONING OBJECT ---
+InvestigationReasoningResult(correlated_evidence=[],
+                             contradictions=[Contradiction(description='No '
+                                                                       'conflicting '
+                                                                       'evidence '
+                                                                       'detected.')],
+                             limitations=[InvestigationLimitation(limitation_type='Data '
+                                                                                  'unavailable',
+                                                                  description='Missing '
+                                                                              'Mobile '
+                                                                              'CDR',
+                                                                  impact='Movement '
+                                                                         'reconstruction '
+                                                                         'incomplete.')],
+                             officer_insights=[OfficerInsight(insight='Witness '
+                                                                      'testimony '
+                                                                      'requires '
+                                                                      'independent '
+                                                                      'corroboration.',
+                                                              reason='Witness '
+                                                                     'testimony '
+                                                                     'currently '
+                                                                     'stands '
+                                                                     'alone. '
+                                                                     'No CCTV, '
+                                                                     'No Phone '
+                                                                     'Records, '
+                                                                     'No DNA. '
+                                                                     'Court '
+                                                                     'reliability '
+                                                                     'may '
+                                                                     'decrease.',
+                                                              supporting_evidence=['Witness '
+                                                                                   'Statements'],
+                                                              investigation_impact='Priority: '
+                                                                                   'Locate '
+                                                                                   'independent '
+                                                                                   'corroboration. '
+                                                                                   'Vulnerable '
+                                                                                   'to '
+                                                                                   'recantation '
+                                                                                   'during '
+                                                                                   'trial.')],
+                             investigation_conclusion=InvestigationConclusion(evidence_strength='Low',
+                                                                              remaining_gaps=['Missing '
+                                                                                              'Mobile '
+                                                                                              'CDR'],
+                                                                              strongest_evidence='Witness '
+                                                                                                 'Statement',
+                                                                              weakest_evidence='Forensics',
+                                                                              probability_of_successful_prosecution='Low',
+                                                                              critical_next_step='Halt '
+                                                                                                 'advanced '
+                                                                                                 'analytics; '
+                                                                                                 'return '
+                                                                                                 'to '
+                                                                                                 'fundamental '
+                                                                                                 'scene '
+                                                                                                 'sweeps.',
+                                                                              overall_investigation_readiness='Requires '
+                                                                                                              'more '
+                                                                                                              'evidence',
+                                                                              supporting_evidence=['KSP-0004',
+                                                                                                   'KSP-000004']))
+
+--- 3. INVESTIGATION BRIEF OBJECT ---
+InvestigationBrief(executive_summary='Investigation record retrieved for '
+                                     'Burglary.',
+                   investigation_priority=InvestigationPriority(level='IMMEDIATE',
+                                                                reason='Known '
+                                                                       'repeat '
+                                                                       'offenders '
+                                                                       'identified. '
+                                                                       'Immediate '
+                                                                       'apprehension '
+                                                                       'required '
+                                                                       'to '
+                                                                       'prevent '
+                                                                       'further '
+                                                                       'offenses.'),
+                   investigation_progress=InvestigationProgress(tasks=[InvestigationTask(task='Crime '
+                                                                                              'Scene',
+                                                                                         status='Completed'),
+                                                                       InvestigationTask(task='Weapon '
+                                                                                              'Recovery',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Witness '
+                                                                                              'Interview',
+                                                                                         status='Completed'),
+                                                                       InvestigationTask(task='CDR',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Forensics',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Chargesheet',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Arrest',
+                                                                                         status='Pending')],
+                                                                completion_pct=28),
+                   collected_evidence=[EvidenceItem(label='Witness Statements',
+                                                    verification_status='Pending '
+                                                                        'Verification',
+                                                    strength='Medium',
+                                                    source='Field Officer '
+                                                           'Report'),
+                                       EvidenceItem(label='FIR Report',
+                                                    verification_status='Verified',
+                                                    strength='High',
+                                                    source='Case Master')],
+                   missing_critical_evidence=[],
+                   key_findings=['Linked Records: 2 verified records suggest a '
+                                 'pattern.',
+                                 'Knowledge graph constructed: 10 nodes, 10 '
+                                 'edges. Connected components: 2.'],
+                   risk_assessment=[RiskItem(level='IMMEDIATE',
+                                             reason='Weapon not recovered or '
+                                                    'identified — forensic '
+                                                    'gap.',
+                                             evidence_used=['Case Master Data',
+                                                            'Forensic / '
+                                                            'Seizure Logs']),
+                                    RiskItem(level='IMMEDIATE',
+                                             reason='No vehicle linked — CCTV '
+                                                    'cross-match not yet '
+                                                    'possible.',
+                                             evidence_used=['Case Master '
+                                                            'Data'])],
+                   recommendations=[],
+                   confidence_explanation=ConfidenceExplanation(score=0.5499999999999999,
+                                                                positive_factors=['Base '
+                                                                                  'confidence '
+                                                                                  'established '
+                                                                                  'from '
+                                                                                  '2 '
+                                                                                  'active '
+                                                                                  'case '
+                                                                                  'records.',
+                                                                                  'Verified '
+                                                                                  'witness '
+                                                                                  'statements '
+                                                                                  '(+15%).',
+                                                                                  'Timeline '
+                                                                                  'sequence '
+                                                                                  'mathematically '
+                                                                                  'contiguous '
+                                                                                  '(+10%).',
+                                                                                  'Knowledge '
+                                                                                  'Graph '
+                                                                                  'confirmed '
+                                                                                  'entity '
+                                                                                  'connections '
+                                                                                  '(+10%).'],
+                                                                negative_factors=[],
+                                                                calculation_summary='Base(0.20) '
+                                                                                    '+ '
+                                                                                    'Witness(0.15) '
+                                                                                    '+ '
+                                                                                    'Forensic(0.0) '
+                                                                                    '+ '
+                                                                                    'Digital(0.0) '
+                                                                                    '+ '
+                                                                                    'Timeline(0.1) '
+                                                                                    '+ '
+                                                                                    'KG(0.1) '
+                                                                                    '- '
+                                                                                    'Penalties(0.0) '
+                                                                                    '= '
+                                                                                    '0.55'),
+                   correlated_evidence=[],
+                   investigation_limitations=[InvestigationLimitation(limitation_type='Data '
+                                                                                      'unavailable',
+                                                                      description='Missing '
+                                                                                  'Mobile '
+                                                                                  'CDR',
+                                                                      impact='Movement '
+                                                                             'reconstruction '
+                                                                             'incomplete.')],
+                   contradictions=[Contradiction(description='No conflicting '
+                                                             'evidence '
+                                                             'detected.')],
+                   officer_insights=[OfficerInsight(insight='Witness testimony '
+                                                            'requires '
+                                                            'independent '
+                                                            'corroboration.',
+                                                    reason='Witness testimony '
+                                                           'currently stands '
+                                                           'alone. No CCTV, No '
+                                                           'Phone Records, No '
+                                                           'DNA. Court '
+                                                           'reliability may '
+                                                           'decrease.',
+                                                    supporting_evidence=['Witness '
+                                                                         'Statements'],
+                                                    investigation_impact='Priority: '
+                                                                         'Locate '
+                                                                         'independent '
+                                                                         'corroboration. '
+                                                                         'Vulnerable '
+                                                                         'to '
+                                                                         'recantation '
+                                                                         'during '
+                                                                         'trial.')],
+                   investigation_conclusion=InvestigationConclusion(evidence_strength='Low',
+                                                                    remaining_gaps=['Missing '
+                                                                                    'Mobile '
+                                                                                    'CDR'],
+                                                                    strongest_evidence='Witness '
+                                                                                       'Statement',
+                                                                    weakest_evidence='Forensics',
+                                                                    probability_of_successful_prosecution='Low',
+                                                                    critical_next_step='Halt '
+                                                                                       'advanced '
+                                                                                       'analytics; '
+                                                                                       'return '
+                                                                                       'to '
+                                                                                       'fundamental '
+                                                                                       'scene '
+                                                                                       'sweeps.',
+                                                                    overall_investigation_readiness='Requires '
+                                                                                                    'more '
+                                                                                                    'evidence',
+                                                                    supporting_evidence=['KSP-0004',
+                                                                                         'KSP-000004']))
+
+--- 4. FINAL RENDERED RESPONSE ---
+📋 EXECUTIVE SUMMARY
+
+Investigation record retrieved for Burglary.
+
+────────────────────────────────────────────
+
+🚨 INVESTIGATION PRIORITY
+
+Priority : 🔴 IMMEDIATE
+
+Reason : Known repeat offenders identified. Immediate apprehension required to prevent further offenses.
+
+────────────────────────────────────────────
+
+📈 INVESTIGATION PROGRESS
+
+Overall Completion: 28%
+
+• ✅ Crime Scene: Completed
+• ⏳ Weapon Recovery: Pending
+• ✅ Witness Interview: Completed
+• ⏳ CDR: Pending
+• ⏳ Forensics: Pending
+• ⏳ Chargesheet: Pending
+• ⏳ Arrest: Pending
+
+────────────────────────────────────────────
+
+🔍 EVIDENCE SUMMARY
+
+**Collected Evidence**
+
+• **Witness Statements**
+  Status: Pending Verification | Strength: Medium | Source: Field Officer Report
+
+• **FIR Report**
+  Status: Verified | Strength: High | Source: Case Master
+
+────────────────────────────────────────────
+
+⚠️ CONTRADICTION ANALYSIS
+
+• No conflicting evidence detected.
+
+────────────────────────────────────────────
+
+⚠️ RISK ASSESSMENT
+
+**Level:** 🔴 IMMEDIATE
+**Reason:** Weapon not recovered or identified — forensic gap.
+**Evidence Used:** Case Master Data, Forensic / Seizure Logs
+
+**Level:** 🔴 IMMEDIATE
+**Reason:** No vehicle linked — CCTV cross-match not yet possible.
+**Evidence Used:** Case Master Data
+
+────────────────────────────────────────────
+
+🕵️ OFFICER INSIGHTS
+
+**Insight:** Witness testimony requires independent corroboration.
+**Why:** Witness testimony currently stands alone. No CCTV, No Phone Records, No DNA. Court reliability may decrease.
+**Supporting Evidence:** Witness Statements
+**Investigation Impact:** Priority: Locate independent corroboration. Vulnerable to recantation during trial.
+
+────────────────────────────────────────────
+
+⚖️ INVESTIGATION CONCLUSION
+
+**Overall Investigation Readiness:** Requires more evidence
+**Evidence Strength:** Low
+**Strongest Evidence:** Witness Statement
+**Weakest Evidence:** Forensics
+**Probability of Successful Prosecution:** Low
+**Remaining Gaps:** Missing Mobile CDR
+**Critical Next Step:** Halt advanced analytics; return to fundamental scene sweeps.
+**Supporting Records:** KSP-0004, KSP-000004
+
+────────────────────────────────────────────
+
+🛑 INVESTIGATION LIMITATIONS
+
+**Data unavailable:** Missing Mobile CDR
+**Impact:** Movement reconstruction incomplete.
+
+────────────────────────────────────────────
+
+📊 CONFIDENCE METRICS
+
+**Final Confidence:** 54%
+
+**Positive Factors:**
+• Base confidence established from 2 active case records.
+• Verified witness statements (+15%).
+• Timeline sequence mathematically contiguous (+10%).
+• Knowledge Graph confirmed entity connections (+10%).
+
+**Final Formula:**
+Base(0.20) + Witness(0.15) + Forensic(0.0) + Digital(0.0) + Timeline(0.1) + KG(0.1) - Penalties(0.0) = 0.55
+
+────────────────────────────────────────────
+
+===========================================================
+RUNTIME PROOF FOR QUERY: 'Open FIR KSP-000123'
+===========================================================
+
+--- 1. PIPELINE EXECUTION ORDER ---
+-> {'stage': 'IntentRouterStage', 'start': 1783793332.9139352, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.918699}
+-> {'stage': 'ConversationEngineStage', 'start': 1783793332.9187, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.918709}
+-> {'stage': 'ClarificationResolutionStage', 'start': 1783793332.918709, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9187121}
+-> {'stage': 'ReferenceResolverStage', 'start': 1783793332.918713, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.918723}
+-> {'stage': 'PronounResolverStage', 'start': 1783793332.918723, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.918727}
+-> {'stage': 'ClarificationCheckStage', 'start': 1783793332.918727, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.919703}
+-> {'stage': 'QueryPlannerStage', 'start': 1783793332.919703, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.919708}
+-> {'stage': 'SearchServiceStage', 'start': 1783793332.91971, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9326909}
+-> {'stage': 'ContextNormalizerStage', 'start': 1783793332.932692, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.935178}
+-> {'stage': 'IntelligenceEngineStage', 'start': 1783793332.935179, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.935196}
+-> {'stage': 'EvidenceCorrelationStage', 'start': 1783793332.9351969, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.935201}
+-> {'stage': 'ReasoningEngineStage', 'start': 1783793332.9352021, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.93521}
+-> {'stage': 'InvestigationReasoningEngineStage', 'start': 1783793332.93521, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.935227}
+-> {'stage': 'KnowledgeGraphStage', 'start': 1783793332.9352279, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.935234}
+-> {'stage': 'TimelineStage', 'start': 1783793332.935234, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9353201}
+-> {'stage': 'CaseSimilarityStage', 'start': 1783793332.9353201, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.93534}
+-> {'stage': 'DecisionSupportStage', 'start': 1783793332.9353411, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.93541}
+-> {'stage': 'MultiAgentEngineStage', 'start': 1783793332.93541, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.935443}
+-> {'stage': 'PredictiveEngineStage', 'start': 1783793332.9354439, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.935447}
+-> {'stage': 'ConfidenceEngineStage', 'start': 1783793332.9354482, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.935456}
+-> {'stage': 'HallucinationGuardStage', 'start': 1783793332.935456, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.935464}
+-> {'stage': 'ExplainabilityEngineStage', 'start': 1783793332.935464, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.93629}
+-> {'stage': 'MemoryEngineStage', 'start': 1783793332.936291, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.936337}
+-> {'stage': 'ResponseGeneratorStage', 'start': 1783793332.936338, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9365351}
+
+--- 2. CONTEXT.INVESTIGATION_REASONING OBJECT ---
+InvestigationReasoningResult(correlated_evidence=[],
+                             contradictions=[Contradiction(description='No '
+                                                                       'conflicting '
+                                                                       'evidence '
+                                                                       'detected.')],
+                             limitations=[InvestigationLimitation(limitation_type='Data '
+                                                                                  'unavailable',
+                                                                  description='Missing '
+                                                                              'Mobile '
+                                                                              'CDR',
+                                                                  impact='Movement '
+                                                                         'reconstruction '
+                                                                         'incomplete.')],
+                             officer_insights=[OfficerInsight(insight='Witness '
+                                                                      'testimony '
+                                                                      'requires '
+                                                                      'independent '
+                                                                      'corroboration.',
+                                                              reason='Witness '
+                                                                     'testimony '
+                                                                     'currently '
+                                                                     'stands '
+                                                                     'alone. '
+                                                                     'No CCTV, '
+                                                                     'No Phone '
+                                                                     'Records, '
+                                                                     'No DNA. '
+                                                                     'Court '
+                                                                     'reliability '
+                                                                     'may '
+                                                                     'decrease.',
+                                                              supporting_evidence=['Witness '
+                                                                                   'Statements'],
+                                                              investigation_impact='Priority: '
+                                                                                   'Locate '
+                                                                                   'independent '
+                                                                                   'corroboration. '
+                                                                                   'Vulnerable '
+                                                                                   'to '
+                                                                                   'recantation '
+                                                                                   'during '
+                                                                                   'trial.')],
+                             investigation_conclusion=InvestigationConclusion(evidence_strength='Low',
+                                                                              remaining_gaps=['Missing '
+                                                                                              'Mobile '
+                                                                                              'CDR'],
+                                                                              strongest_evidence='Witness '
+                                                                                                 'Statement',
+                                                                              weakest_evidence='Forensics',
+                                                                              probability_of_successful_prosecution='Low',
+                                                                              critical_next_step='Halt '
+                                                                                                 'advanced '
+                                                                                                 'analytics; '
+                                                                                                 'return '
+                                                                                                 'to '
+                                                                                                 'fundamental '
+                                                                                                 'scene '
+                                                                                                 'sweeps.',
+                                                                              overall_investigation_readiness='Requires '
+                                                                                                              'more '
+                                                                                                              'evidence',
+                                                                              supporting_evidence=['KSP-000123']))
+
+--- 3. INVESTIGATION BRIEF OBJECT ---
+InvestigationBrief(executive_summary='Investigation record retrieved for '
+                                     'Simple Assault.',
+                   investigation_priority=InvestigationPriority(level='MEDIUM',
+                                                                reason='Standard '
+                                                                       'investigation. '
+                                                                       'Follow '
+                                                                       'routine '
+                                                                       'evidence '
+                                                                       'collection '
+                                                                       'procedures.'),
+                   investigation_progress=InvestigationProgress(tasks=[InvestigationTask(task='Crime '
+                                                                                              'Scene',
+                                                                                         status='Completed'),
+                                                                       InvestigationTask(task='Weapon '
+                                                                                              'Recovery',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Witness '
+                                                                                              'Interview',
+                                                                                         status='Completed'),
+                                                                       InvestigationTask(task='CDR',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Forensics',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Chargesheet',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Arrest',
+                                                                                         status='Pending')],
+                                                                completion_pct=28),
+                   collected_evidence=[EvidenceItem(label='Witness Statements',
+                                                    verification_status='Pending '
+                                                                        'Verification',
+                                                    strength='Medium',
+                                                    source='Field Officer '
+                                                           'Report'),
+                                       EvidenceItem(label='FIR Report',
+                                                    verification_status='Verified',
+                                                    strength='High',
+                                                    source='Case Master')],
+                   missing_critical_evidence=[],
+                   key_findings=['Insufficient records to establish network '
+                                 'links.'],
+                   risk_assessment=[RiskItem(level='IMMEDIATE',
+                                             reason='No cross-FIR links '
+                                                    'established — network '
+                                                    'analysis not available.',
+                                             evidence_used=['Case Master Data',
+                                                            'Knowledge Graph '
+                                                            'Engine']),
+                                    RiskItem(level='IMMEDIATE',
+                                             reason='Weapon not recovered or '
+                                                    'identified — forensic '
+                                                    'gap.',
+                                             evidence_used=['Case Master Data',
+                                                            'Forensic / '
+                                                            'Seizure Logs'])],
+                   recommendations=[],
+                   confidence_explanation=ConfidenceExplanation(score=0.44999999999999996,
+                                                                positive_factors=['Base '
+                                                                                  'confidence '
+                                                                                  'established '
+                                                                                  'from '
+                                                                                  '1 '
+                                                                                  'active '
+                                                                                  'case '
+                                                                                  'records.',
+                                                                                  'Verified '
+                                                                                  'witness '
+                                                                                  'statements '
+                                                                                  '(+15%).',
+                                                                                  'Timeline '
+                                                                                  'sequence '
+                                                                                  'mathematically '
+                                                                                  'contiguous '
+                                                                                  '(+10%).'],
+                                                                negative_factors=[],
+                                                                calculation_summary='Base(0.20) '
+                                                                                    '+ '
+                                                                                    'Witness(0.15) '
+                                                                                    '+ '
+                                                                                    'Forensic(0.0) '
+                                                                                    '+ '
+                                                                                    'Digital(0.0) '
+                                                                                    '+ '
+                                                                                    'Timeline(0.1) '
+                                                                                    '+ '
+                                                                                    'KG(0.0) '
+                                                                                    '- '
+                                                                                    'Penalties(0.0) '
+                                                                                    '= '
+                                                                                    '0.45'),
+                   correlated_evidence=[],
+                   investigation_limitations=[InvestigationLimitation(limitation_type='Data '
+                                                                                      'unavailable',
+                                                                      description='Missing '
+                                                                                  'Mobile '
+                                                                                  'CDR',
+                                                                      impact='Movement '
+                                                                             'reconstruction '
+                                                                             'incomplete.')],
+                   contradictions=[Contradiction(description='No conflicting '
+                                                             'evidence '
+                                                             'detected.')],
+                   officer_insights=[OfficerInsight(insight='Witness testimony '
+                                                            'requires '
+                                                            'independent '
+                                                            'corroboration.',
+                                                    reason='Witness testimony '
+                                                           'currently stands '
+                                                           'alone. No CCTV, No '
+                                                           'Phone Records, No '
+                                                           'DNA. Court '
+                                                           'reliability may '
+                                                           'decrease.',
+                                                    supporting_evidence=['Witness '
+                                                                         'Statements'],
+                                                    investigation_impact='Priority: '
+                                                                         'Locate '
+                                                                         'independent '
+                                                                         'corroboration. '
+                                                                         'Vulnerable '
+                                                                         'to '
+                                                                         'recantation '
+                                                                         'during '
+                                                                         'trial.')],
+                   investigation_conclusion=InvestigationConclusion(evidence_strength='Low',
+                                                                    remaining_gaps=['Missing '
+                                                                                    'Mobile '
+                                                                                    'CDR'],
+                                                                    strongest_evidence='Witness '
+                                                                                       'Statement',
+                                                                    weakest_evidence='Forensics',
+                                                                    probability_of_successful_prosecution='Low',
+                                                                    critical_next_step='Halt '
+                                                                                       'advanced '
+                                                                                       'analytics; '
+                                                                                       'return '
+                                                                                       'to '
+                                                                                       'fundamental '
+                                                                                       'scene '
+                                                                                       'sweeps.',
+                                                                    overall_investigation_readiness='Requires '
+                                                                                                    'more '
+                                                                                                    'evidence',
+                                                                    supporting_evidence=['KSP-000123']))
+
+--- 4. FINAL RENDERED RESPONSE ---
+📋 EXECUTIVE SUMMARY
+
+Investigation record retrieved for Simple Assault.
+
+────────────────────────────────────────────
+
+🚨 INVESTIGATION PRIORITY
+
+Priority : 🟡 MEDIUM
+
+Reason : Standard investigation. Follow routine evidence collection procedures.
+
+────────────────────────────────────────────
+
+📈 INVESTIGATION PROGRESS
+
+Overall Completion: 28%
+
+• ✅ Crime Scene: Completed
+• ⏳ Weapon Recovery: Pending
+• ✅ Witness Interview: Completed
+• ⏳ CDR: Pending
+• ⏳ Forensics: Pending
+• ⏳ Chargesheet: Pending
+• ⏳ Arrest: Pending
+
+────────────────────────────────────────────
+
+🔍 EVIDENCE SUMMARY
+
+**Collected Evidence**
+
+• **Witness Statements**
+  Status: Pending Verification | Strength: Medium | Source: Field Officer Report
+
+• **FIR Report**
+  Status: Verified | Strength: High | Source: Case Master
+
+────────────────────────────────────────────
+
+⚠️ CONTRADICTION ANALYSIS
+
+• No conflicting evidence detected.
+
+────────────────────────────────────────────
+
+⚠️ RISK ASSESSMENT
+
+**Level:** 🔴 IMMEDIATE
+**Reason:** No cross-FIR links established — network analysis not available.
+**Evidence Used:** Case Master Data, Knowledge Graph Engine
+
+**Level:** 🔴 IMMEDIATE
+**Reason:** Weapon not recovered or identified — forensic gap.
+**Evidence Used:** Case Master Data, Forensic / Seizure Logs
+
+────────────────────────────────────────────
+
+🕵️ OFFICER INSIGHTS
+
+**Insight:** Witness testimony requires independent corroboration.
+**Why:** Witness testimony currently stands alone. No CCTV, No Phone Records, No DNA. Court reliability may decrease.
+**Supporting Evidence:** Witness Statements
+**Investigation Impact:** Priority: Locate independent corroboration. Vulnerable to recantation during trial.
+
+────────────────────────────────────────────
+
+⚖️ INVESTIGATION CONCLUSION
+
+**Overall Investigation Readiness:** Requires more evidence
+**Evidence Strength:** Low
+**Strongest Evidence:** Witness Statement
+**Weakest Evidence:** Forensics
+**Probability of Successful Prosecution:** Low
+**Remaining Gaps:** Missing Mobile CDR
+**Critical Next Step:** Halt advanced analytics; return to fundamental scene sweeps.
+**Supporting Records:** KSP-000123
+
+────────────────────────────────────────────
+
+🛑 INVESTIGATION LIMITATIONS
+
+**Data unavailable:** Missing Mobile CDR
+**Impact:** Movement reconstruction incomplete.
+
+────────────────────────────────────────────
+
+📊 CONFIDENCE METRICS
+
+**Final Confidence:** 44%
+
+**Positive Factors:**
+• Base confidence established from 1 active case records.
+• Verified witness statements (+15%).
+• Timeline sequence mathematically contiguous (+10%).
+
+**Final Formula:**
+Base(0.20) + Witness(0.15) + Forensic(0.0) + Digital(0.0) + Timeline(0.1) + KG(0.0) - Penalties(0.0) = 0.45
+
+────────────────────────────────────────────
+
+===========================================================
+RUNTIME PROOF FOR QUERY: 'Open FIR KSP-000346'
+===========================================================
+
+--- 1. PIPELINE EXECUTION ORDER ---
+-> {'stage': 'IntentRouterStage', 'start': 1783793332.9375072, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.941282}
+-> {'stage': 'ConversationEngineStage', 'start': 1783793332.941283, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.94129}
+-> {'stage': 'ClarificationResolutionStage', 'start': 1783793332.94129, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9412942}
+-> {'stage': 'ReferenceResolverStage', 'start': 1783793332.9412942, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.941303}
+-> {'stage': 'PronounResolverStage', 'start': 1783793332.941303, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9413068}
+-> {'stage': 'ClarificationCheckStage', 'start': 1783793332.941308, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.94226}
+-> {'stage': 'QueryPlannerStage', 'start': 1783793332.942261, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.942265}
+-> {'stage': 'SearchServiceStage', 'start': 1783793332.9422662, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.953603}
+-> {'stage': 'ContextNormalizerStage', 'start': 1783793332.953604, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.955814}
+-> {'stage': 'IntelligenceEngineStage', 'start': 1783793332.9558148, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.955831}
+-> {'stage': 'EvidenceCorrelationStage', 'start': 1783793332.955831, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9558349}
+-> {'stage': 'ReasoningEngineStage', 'start': 1783793332.9558358, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.955843}
+-> {'stage': 'InvestigationReasoningEngineStage', 'start': 1783793332.955843, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.955861}
+-> {'stage': 'KnowledgeGraphStage', 'start': 1783793332.955861, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9558668}
+-> {'stage': 'TimelineStage', 'start': 1783793332.9558668, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9559522}
+-> {'stage': 'CaseSimilarityStage', 'start': 1783793332.955953, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9559722}
+-> {'stage': 'DecisionSupportStage', 'start': 1783793332.9559731, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.956038}
+-> {'stage': 'MultiAgentEngineStage', 'start': 1783793332.956039, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.956068}
+-> {'stage': 'PredictiveEngineStage', 'start': 1783793332.9560692, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9560719}
+-> {'stage': 'ConfidenceEngineStage', 'start': 1783793332.9560719, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.9560802}
+-> {'stage': 'HallucinationGuardStage', 'start': 1783793332.9560802, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.956088}
+-> {'stage': 'ExplainabilityEngineStage', 'start': 1783793332.956088, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.95677}
+-> {'stage': 'MemoryEngineStage', 'start': 1783793332.95677, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.956814}
+-> {'stage': 'ResponseGeneratorStage', 'start': 1783793332.956814, 'decision': 'Executed', 'reason': 'Enterprise Orchestrator', 'skipped': False, 'executed': True, 'end': 1783793332.956994}
+
+--- 2. CONTEXT.INVESTIGATION_REASONING OBJECT ---
+InvestigationReasoningResult(correlated_evidence=[],
+                             contradictions=[Contradiction(description='No '
+                                                                       'conflicting '
+                                                                       'evidence '
+                                                                       'detected.')],
+                             limitations=[InvestigationLimitation(limitation_type='Forensic '
+                                                                                  'pending',
+                                                                  description='Missing '
+                                                                              'Murder '
+                                                                              'Weapon',
+                                                                  impact='Limits '
+                                                                         'forensic '
+                                                                         'certainty.'),
+                                          InvestigationLimitation(limitation_type='Data '
+                                                                                  'unavailable',
+                                                                  description='Missing '
+                                                                              'Mobile '
+                                                                              'CDR',
+                                                                  impact='Movement '
+                                                                         'reconstruction '
+                                                                         'incomplete.')],
+                             officer_insights=[OfficerInsight(insight='Witness '
+                                                                      'testimony '
+                                                                      'requires '
+                                                                      'independent '
+                                                                      'corroboration.',
+                                                              reason='Witness '
+                                                                     'testimony '
+                                                                     'currently '
+                                                                     'stands '
+                                                                     'alone. '
+                                                                     'No CCTV, '
+                                                                     'No Phone '
+                                                                     'Records, '
+                                                                     'No DNA. '
+                                                                     'Court '
+                                                                     'reliability '
+                                                                     'may '
+                                                                     'decrease.',
+                                                              supporting_evidence=['Witness '
+                                                                                   'Statements'],
+                                                              investigation_impact='Priority: '
+                                                                                   'Locate '
+                                                                                   'independent '
+                                                                                   'corroboration. '
+                                                                                   'Vulnerable '
+                                                                                   'to '
+                                                                                   'recantation '
+                                                                                   'during '
+                                                                                   'trial.')],
+                             investigation_conclusion=InvestigationConclusion(evidence_strength='Low',
+                                                                              remaining_gaps=['Missing '
+                                                                                              'Murder '
+                                                                                              'Weapon',
+                                                                                              'Missing '
+                                                                                              'Mobile '
+                                                                                              'CDR'],
+                                                                              strongest_evidence='Witness '
+                                                                                                 'Statement',
+                                                                              weakest_evidence='Forensics',
+                                                                              probability_of_successful_prosecution='Low',
+                                                                              critical_next_step='Halt '
+                                                                                                 'advanced '
+                                                                                                 'analytics; '
+                                                                                                 'return '
+                                                                                                 'to '
+                                                                                                 'fundamental '
+                                                                                                 'scene '
+                                                                                                 'sweeps.',
+                                                                              overall_investigation_readiness='Requires '
+                                                                                                              'more '
+                                                                                                              'evidence',
+                                                                              supporting_evidence=['KSP-000346']))
+
+--- 3. INVESTIGATION BRIEF OBJECT ---
+InvestigationBrief(executive_summary='This is a violent crime investigation '
+                                     '(Homicide). High-priority forensic and '
+                                     'timeline reconstruction is in progress.',
+                   investigation_priority=InvestigationPriority(level='IMMEDIATE',
+                                                                reason='Violent '
+                                                                       'crime '
+                                                                       'with '
+                                                                       'severe '
+                                                                       'threat '
+                                                                       'to '
+                                                                       'public '
+                                                                       'safety. '
+                                                                       'Requires '
+                                                                       'dedicated '
+                                                                       'task '
+                                                                       'force.'),
+                   investigation_progress=InvestigationProgress(tasks=[InvestigationTask(task='Crime '
+                                                                                              'Scene',
+                                                                                         status='Completed'),
+                                                                       InvestigationTask(task='Weapon '
+                                                                                              'Recovery',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Witness '
+                                                                                              'Interview',
+                                                                                         status='Completed'),
+                                                                       InvestigationTask(task='CDR',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Forensics',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Chargesheet',
+                                                                                         status='Pending'),
+                                                                       InvestigationTask(task='Arrest',
+                                                                                         status='Pending')],
+                                                                completion_pct=28),
+                   collected_evidence=[EvidenceItem(label='Witness Statements',
+                                                    verification_status='Pending '
+                                                                        'Verification',
+                                                    strength='Medium',
+                                                    source='Field Officer '
+                                                           'Report'),
+                                       EvidenceItem(label='FIR Report',
+                                                    verification_status='Verified',
+                                                    strength='High',
+                                                    source='Case Master')],
+                   missing_critical_evidence=[EvidenceItem(label='Murder '
+                                                                 'Weapon',
+                                                           verification_status='Missing',
+                                                           strength='High',
+                                                           source='Crime '
+                                                                  'Scene')],
+                   key_findings=['Insufficient records to establish network '
+                                 'links.'],
+                   risk_assessment=[RiskItem(level='IMMEDIATE',
+                                             reason='No cross-FIR links '
+                                                    'established — network '
+                                                    'analysis not available.',
+                                             evidence_used=['Case Master Data',
+                                                            'Knowledge Graph '
+                                                            'Engine']),
+                                    RiskItem(level='IMMEDIATE',
+                                             reason='Weapon not recovered or '
+                                                    'identified — forensic '
+                                                    'gap.',
+                                             evidence_used=['Case Master Data',
+                                                            'Forensic / '
+                                                            'Seizure Logs'])],
+                   recommendations=[],
+                   confidence_explanation=ConfidenceExplanation(score=0.44999999999999996,
+                                                                positive_factors=['Base '
+                                                                                  'confidence '
+                                                                                  'established '
+                                                                                  'from '
+                                                                                  '1 '
+                                                                                  'active '
+                                                                                  'case '
+                                                                                  'records.',
+                                                                                  'Verified '
+                                                                                  'witness '
+                                                                                  'statements '
+                                                                                  '(+15%).',
+                                                                                  'Timeline '
+                                                                                  'sequence '
+                                                                                  'mathematically '
+                                                                                  'contiguous '
+                                                                                  '(+10%).'],
+                                                                negative_factors=[],
+                                                                calculation_summary='Base(0.20) '
+                                                                                    '+ '
+                                                                                    'Witness(0.15) '
+                                                                                    '+ '
+                                                                                    'Forensic(0.0) '
+                                                                                    '+ '
+                                                                                    'Digital(0.0) '
+                                                                                    '+ '
+                                                                                    'Timeline(0.1) '
+                                                                                    '+ '
+                                                                                    'KG(0.0) '
+                                                                                    '- '
+                                                                                    'Penalties(0.0) '
+                                                                                    '= '
+                                                                                    '0.45'),
+                   correlated_evidence=[],
+                   investigation_limitations=[InvestigationLimitation(limitation_type='Forensic '
+                                                                                      'pending',
+                                                                      description='Missing '
+                                                                                  'Murder '
+                                                                                  'Weapon',
+                                                                      impact='Limits '
+                                                                             'forensic '
+                                                                             'certainty.'),
+                                              InvestigationLimitation(limitation_type='Data '
+                                                                                      'unavailable',
+                                                                      description='Missing '
+                                                                                  'Mobile '
+                                                                                  'CDR',
+                                                                      impact='Movement '
+                                                                             'reconstruction '
+                                                                             'incomplete.')],
+                   contradictions=[Contradiction(description='No conflicting '
+                                                             'evidence '
+                                                             'detected.')],
+                   officer_insights=[OfficerInsight(insight='Witness testimony '
+                                                            'requires '
+                                                            'independent '
+                                                            'corroboration.',
+                                                    reason='Witness testimony '
+                                                           'currently stands '
+                                                           'alone. No CCTV, No '
+                                                           'Phone Records, No '
+                                                           'DNA. Court '
+                                                           'reliability may '
+                                                           'decrease.',
+                                                    supporting_evidence=['Witness '
+                                                                         'Statements'],
+                                                    investigation_impact='Priority: '
+                                                                         'Locate '
+                                                                         'independent '
+                                                                         'corroboration. '
+                                                                         'Vulnerable '
+                                                                         'to '
+                                                                         'recantation '
+                                                                         'during '
+                                                                         'trial.')],
+                   investigation_conclusion=InvestigationConclusion(evidence_strength='Low',
+                                                                    remaining_gaps=['Missing '
+                                                                                    'Murder '
+                                                                                    'Weapon',
+                                                                                    'Missing '
+                                                                                    'Mobile '
+                                                                                    'CDR'],
+                                                                    strongest_evidence='Witness '
+                                                                                       'Statement',
+                                                                    weakest_evidence='Forensics',
+                                                                    probability_of_successful_prosecution='Low',
+                                                                    critical_next_step='Halt '
+                                                                                       'advanced '
+                                                                                       'analytics; '
+                                                                                       'return '
+                                                                                       'to '
+                                                                                       'fundamental '
+                                                                                       'scene '
+                                                                                       'sweeps.',
+                                                                    overall_investigation_readiness='Requires '
+                                                                                                    'more '
+                                                                                                    'evidence',
+                                                                    supporting_evidence=['KSP-000346']))
+
+--- 4. FINAL RENDERED RESPONSE ---
+📋 EXECUTIVE SUMMARY
+
+This is a violent crime investigation (Homicide). High-priority forensic and timeline reconstruction is in progress.
+
+────────────────────────────────────────────
+
+🚨 INVESTIGATION PRIORITY
+
+Priority : 🔴 IMMEDIATE
+
+Reason : Violent crime with severe threat to public safety. Requires dedicated task force.
+
+────────────────────────────────────────────
+
+📈 INVESTIGATION PROGRESS
+
+Overall Completion: 28%
+
+• ✅ Crime Scene: Completed
+• ⏳ Weapon Recovery: Pending
+• ✅ Witness Interview: Completed
+• ⏳ CDR: Pending
+• ⏳ Forensics: Pending
+• ⏳ Chargesheet: Pending
+• ⏳ Arrest: Pending
+
+────────────────────────────────────────────
+
+🔍 EVIDENCE SUMMARY
+
+**Collected Evidence**
+
+• **Witness Statements**
+  Status: Pending Verification | Strength: Medium | Source: Field Officer Report
+
+• **FIR Report**
+  Status: Verified | Strength: High | Source: Case Master
+
+**Missing Critical Evidence**
+
+• **Murder Weapon**
+  Status: Missing | Target Source: Crime Scene
+
+────────────────────────────────────────────
+
+⚠️ CONTRADICTION ANALYSIS
+
+• No conflicting evidence detected.
+
+────────────────────────────────────────────
+
+⚠️ RISK ASSESSMENT
+
+**Level:** 🔴 IMMEDIATE
+**Reason:** No cross-FIR links established — network analysis not available.
+**Evidence Used:** Case Master Data, Knowledge Graph Engine
+
+**Level:** 🔴 IMMEDIATE
+**Reason:** Weapon not recovered or identified — forensic gap.
+**Evidence Used:** Case Master Data, Forensic / Seizure Logs
+
+────────────────────────────────────────────
+
+🕵️ OFFICER INSIGHTS
+
+**Insight:** Witness testimony requires independent corroboration.
+**Why:** Witness testimony currently stands alone. No CCTV, No Phone Records, No DNA. Court reliability may decrease.
+**Supporting Evidence:** Witness Statements
+**Investigation Impact:** Priority: Locate independent corroboration. Vulnerable to recantation during trial.
+
+────────────────────────────────────────────
+
+⚖️ INVESTIGATION CONCLUSION
+
+**Overall Investigation Readiness:** Requires more evidence
+**Evidence Strength:** Low
+**Strongest Evidence:** Witness Statement
+**Weakest Evidence:** Forensics
+**Probability of Successful Prosecution:** Low
+**Remaining Gaps:** Missing Murder Weapon, Missing Mobile CDR
+**Critical Next Step:** Halt advanced analytics; return to fundamental scene sweeps.
+**Supporting Records:** KSP-000346
+
+────────────────────────────────────────────
+
+🛑 INVESTIGATION LIMITATIONS
+
+**Forensic pending:** Missing Murder Weapon
+**Impact:** Limits forensic certainty.
+
+**Data unavailable:** Missing Mobile CDR
+**Impact:** Movement reconstruction incomplete.
+
+────────────────────────────────────────────
+
+📊 CONFIDENCE METRICS
+
+**Final Confidence:** 44%
+
+**Positive Factors:**
+• Base confidence established from 1 active case records.
+• Verified witness statements (+15%).
+• Timeline sequence mathematically contiguous (+10%).
+
+**Final Formula:**
+Base(0.20) + Witness(0.15) + Forensic(0.0) + Digital(0.0) + Timeline(0.1) + KG(0.0) - Penalties(0.0) = 0.45
+
+────────────────────────────────────────────

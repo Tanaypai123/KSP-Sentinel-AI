@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+from app.ai.investigation_reasoning_engine import InvestigationReasoningEngineStage
 
 class QueryPlanner:
     """
@@ -34,14 +35,22 @@ class QueryPlanner:
             elif intent == "PREDICT_CRIME":
                 plan.extend([
                     "SearchServiceStage",
-                    "ReasoningEngineStage",
+                    "ContextNormalizerStage",
+                    
+                "EvidenceCorrelationStage",
+                "ReasoningEngineStage",
+                "InvestigationReasoningEngineStage",
                     "ResponseGeneratorStage"
                 ])
             else:
                 plan.extend([
                     "SearchServiceStage",
+                    "ContextNormalizerStage",
                     "IntelligenceEngineStage",
-                    "ReasoningEngineStage",
+                    
+                "EvidenceCorrelationStage",
+                "ReasoningEngineStage",
+                "InvestigationReasoningEngineStage",
                     "ResponseGeneratorStage"
                 ])
             return plan
@@ -60,9 +69,13 @@ class QueryPlanner:
             # Comparison requires data retrieval, AI reasoning, and response generation
             plan.extend([
                 "SearchServiceStage",
+                "ContextNormalizerStage",
                 "IntelligenceEngineStage",
-                "ReasoningEngineStage",
+                
                 "EvidenceCorrelationStage",
+                "ReasoningEngineStage",
+                "InvestigationReasoningEngineStage",
+                
                 "KnowledgeGraphStage",
                 "TimelineStage",
                 "CaseSimilarityStage",
@@ -80,9 +93,13 @@ class QueryPlanner:
             # Network graph analysis
             plan.extend([
                 "SearchServiceStage",
+                "ContextNormalizerStage",
                 "IntelligenceEngineStage",
-                "ReasoningEngineStage",
+                
                 "EvidenceCorrelationStage",
+                "ReasoningEngineStage",
+                "InvestigationReasoningEngineStage",
+                
                 "KnowledgeGraphStage",
                 "TimelineStage",
                 "CaseSimilarityStage",
@@ -100,8 +117,12 @@ class QueryPlanner:
             # Analytics/Prediction
             plan.extend([
                 "SearchServiceStage",
-                "ReasoningEngineStage",  # Bypasses IntelligenceEngine as predictor runs inside Search
+                "ContextNormalizerStage",
+                
                 "EvidenceCorrelationStage",
+                "ReasoningEngineStage",
+                "InvestigationReasoningEngineStage",  # Bypasses IntelligenceEngine as predictor runs inside Search
+                
                 "KnowledgeGraphStage",
                 "TimelineStage",
                 "CaseSimilarityStage",
@@ -119,9 +140,13 @@ class QueryPlanner:
             # Repeat offender & Dossier
             plan.extend([
                 "SearchServiceStage",
+                "ContextNormalizerStage",
                 "IntelligenceEngineStage",
-                "ReasoningEngineStage",
+                
                 "EvidenceCorrelationStage",
+                "ReasoningEngineStage",
+                "InvestigationReasoningEngineStage",
+                
                 "KnowledgeGraphStage",
                 "TimelineStage",
                 "CaseSimilarityStage",
@@ -139,9 +164,13 @@ class QueryPlanner:
             # Default single search (FIR_LOOKUP, SEARCH_CASES, SEARCH_LOCATION, etc)
             plan.extend([
                 "SearchServiceStage",
+                "ContextNormalizerStage",
                 "IntelligenceEngineStage",
-                "ReasoningEngineStage",
+                
                 "EvidenceCorrelationStage",
+                "ReasoningEngineStage",
+                "InvestigationReasoningEngineStage",
+                
                 "KnowledgeGraphStage",
                 "TimelineStage",
                 "CaseSimilarityStage",

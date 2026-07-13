@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo, Fragment, createContext, useContext } from 'react';
-import { jsPDF } from 'jspdf';
+// jsPDF removed - unused import (PDF export handled via backend API)
 import { detectKannada, translateToEnglish, translateToKannada } from '../services/translationService';
 import {
   Send,
@@ -58,42 +58,67 @@ const suggestedQueries = {
 };
 
 // ---------------------------------------------------------------------------
-// A. Simulated Streaming Text Component (Character-by-Character)
+// A. Simulated Streaming Text Component — Performance Optimized
+// FIX: Batch multiple characters per RAF frame to stay at ≤60 FPS.
+// Previously: setInterval at 8ms (125 FPS) caused ~125 React state updates/sec.
+// Now: requestAnimationFrame batches characters at 16ms (60 FPS max).
+// FIX: onUpdate (scroll) is throttled to RAF — no longer called per-character.
 // ---------------------------------------------------------------------------
 interface StreamedTextProps {
   text: string;
-  speed?: number;
+  charsPerFrame?: number;
   onComplete?: () => void;
   onUpdate?: () => void;
 }
 
-export function StreamedText({ text, speed = 8, onComplete, onUpdate }: StreamedTextProps) {
+export function StreamedText({ text, charsPerFrame = 4, onComplete, onUpdate }: StreamedTextProps) {
   const [displayedText, setDisplayedText] = useState('');
   
   // Defensively ensure text is a string
   const safeText = typeof text === 'string' ? text : (text ? JSON.stringify(text) : '');
+  
+  const indexRef = useRef(0);
+  const rafRef = useRef<number>(0);
+  const onUpdateRef = useRef(onUpdate);
+  const onCompleteRef = useRef(onComplete);
+  // Track last scroll-update frame to throttle scroll calls
+  const lastScrollFrameRef = useRef(0);
 
   useEffect(() => {
-    let index = 0;
-    let rafId: number;
-    const interval = setInterval(() => {
-      setDisplayedText((prev) => prev + safeText.charAt(index));
-      index++;
-      rafId = requestAnimationFrame(() => {
-        onUpdate?.();
-      });
-      if (index >= safeText.length) {
-        clearInterval(interval);
-        cancelAnimationFrame(rafId);
-        onComplete?.();
+    onUpdateRef.current = onUpdate;
+    onCompleteRef.current = onComplete;
+  }, [onUpdate, onComplete]);
+
+  useEffect(() => {
+    indexRef.current = 0;
+    setDisplayedText('');
+
+    const tick = () => {
+      if (indexRef.current >= safeText.length) {
+        onCompleteRef.current?.();
+        return;
       }
-    }, speed);
+      // Batch multiple characters per frame for long responses
+      const nextIndex = Math.min(indexRef.current + charsPerFrame, safeText.length);
+      indexRef.current = nextIndex;
+      setDisplayedText(safeText.substring(0, nextIndex));
+
+      // Throttle scroll: only call onUpdate every 4 frames (~15fps) to avoid layout thrash
+      const now = performance.now();
+      if (now - lastScrollFrameRef.current > 64) {
+        lastScrollFrameRef.current = now;
+        onUpdateRef.current?.();
+      }
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
 
     return () => {
-      clearInterval(interval);
-      cancelAnimationFrame(rafId);
+      cancelAnimationFrame(rafRef.current);
     };
-  }, [safeText, speed, onComplete, onUpdate]);
+  }, [safeText, charsPerFrame]);
 
   return <span className="font-sans text-sm md:text-base leading-relaxed text-neutral-250 whitespace-pre-wrap">{displayedText}</span>;
 }
@@ -1412,19 +1437,19 @@ function IntentResponseBlock({ payload, onQueryAction }: { payload: BackendRespo
           <VictimCard payload={payload} />
         )}
         
-        {intent === 'SEARCH_POLICE_STATION' && (
+        {(intent as string) === 'SEARCH_POLICE_STATION' && (
           <LocationBadge payload={payload} icon={Shield} title="Police Station Jurisdiction" />
         )}
         
-        {intent === 'SEARCH_LOCATION' && (
+        {(intent as string) === 'SEARCH_LOCATION' && (
           <LocationBadge payload={payload} icon={MapPin} title="Incident District" />
         )}
         
-        {intent === 'SEARCH_OFFICER' && (
+        {(intent as string) === 'SEARCH_OFFICER' && (
           <LocationBadge payload={payload} icon={User} title="Investigating Officer" />
         )}
         
-        {intent === 'NETWORK_ANALYSIS' && (
+        {(intent as string) === 'NETWORK_ANALYSIS' && (
           <NetworkSummaryCard payload={payload} />
         )}
 
@@ -1526,6 +1551,104 @@ const PredictionCard = memo(PredictionCardRaw);
 const AccusedCardGrid = memo(AccusedCardGridRaw);
 
 // ---------------------------------------------------------------------------
+// MessageBubble — Memoized per-message component
+// FIX: Wrapping each message in React.memo means only the streaming message
+// re-renders. Completed messages are never touched again, eliminating the
+// "entire list re-renders on every character" problem.
+// FIX: onComplete now calls onStreamComplete(msg.id) which does a proper
+// setMessages() state update instead of directly mutating msg.isStreaming.
+// ---------------------------------------------------------------------------
+interface MessageBubbleProps {
+  msg: Message;
+  activeUiLang: 'en' | 'kn';
+  isUserNearBottom: React.MutableRefObject<boolean>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  onDrawerOpen: (payload: BackendResponse | null) => void;
+  onQueryAction: (query: string) => void;
+  onStreamComplete: (id: string) => void;
+}
+
+const MessageBubble = memo(function MessageBubble({
+  msg,
+  activeUiLang,
+  isUserNearBottom,
+  messagesEndRef,
+  onDrawerOpen,
+  onQueryAction,
+  onStreamComplete,
+}: MessageBubbleProps) {
+  const isUser = msg.sender === 'user';
+  const timeString = msg.timestamp;
+
+  return (
+    <div
+      className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} animate-fadeIn mb-6`}
+    >
+      <div className={`flex items-start max-w-[85%] md:max-w-[75%] ${isUser ? 'flex-row-reverse' : 'flex-row'} space-x-4`}>
+
+        {/* Avatar Icon */}
+        {!isUser && (
+          <div className="w-9 h-9 rounded-full border border-[#18D3C5]/30 bg-[#18D3C5]/10 flex items-center justify-center text-[#18D3C5] flex-shrink-0 mt-1 mr-4">
+            <Sparkles className="w-4 h-4" />
+          </div>
+        )}
+
+        {/* Message Bubble/Card */}
+        <div
+          className={`p-5 rounded-2xl flex flex-col space-y-3 shadow-md ${
+            isUser
+              ? 'bg-[#152C2D] text-white rounded-tr-sm border border-[#18D3C5]/10 ml-4'
+              : 'bg-[#141A22] text-neutral-200 rounded-tl-sm border border-white/5'
+          }`}
+        >
+          <div className="font-sans leading-relaxed text-[15px] whitespace-pre-wrap">
+            {!isUser && msg.isStreaming ? (
+              <StreamedText
+                text={msg.id === 'm-welcome' ? t(msg.text, activeUiLang) : msg.text}
+                onUpdate={() => {
+                  if (isUserNearBottom.current) {
+                    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+                  }
+                }}
+                onComplete={() => onStreamComplete(msg.id)}
+              />
+            ) : (
+              <span>{msg.id === 'm-welcome' ? t(msg.text, activeUiLang) : msg.text}</span>
+            )}
+          </div>
+
+          {/* Backend Cards (AI Only) */}
+          {msg.backendPayload && (
+            <div className="mt-4">
+              <IntentResponseBlock payload={msg.backendPayload} onQueryAction={onQueryAction} />
+            </div>
+          )}
+
+          {/* Metadata Footer */}
+          <div className={`flex items-center space-x-2 text-[11px] font-medium text-neutral-500 pt-2 ${isUser ? 'justify-end' : 'justify-between'}`}>
+            {!isUser && msg.backendPayload && (
+              <button
+                onClick={() => onDrawerOpen(msg.backendPayload || null)}
+                className="flex items-center space-x-1 hover:text-[#18D3C5] transition cursor-pointer px-2 py-1 rounded-md hover:bg-[#18D3C5]/10 border border-transparent hover:border-[#18D3C5]/20"
+                title="View Developer Info"
+              >
+                <Info className="w-3.5 h-3.5" />
+                <span>Info</span>
+              </button>
+            )}
+            <div className="flex items-center space-x-2">
+              <span>{timeString}</span>
+              {isUser && <CheckCheck className="w-3.5 h-3.5 text-[#18D3C5]" />}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+});
+
+// ---------------------------------------------------------------------------
 // AIWorkspace Main Component
 // ---------------------------------------------------------------------------
 interface AIWorkspaceProps {
@@ -1576,6 +1699,16 @@ export default function AIWorkspace({
   const [micError, setMicError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const startInputRef = useRef<string>('');
+  
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isUserNearBottom = useRef<boolean>(true);
+
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    // User is near bottom if they are within 100px from the bottom
+    isUserNearBottom.current = scrollHeight - scrollTop - clientHeight <= 100;
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1826,9 +1959,14 @@ export default function AIWorkspace({
     }
   ];
 
+  // FIX: Auto-scroll only when a new message is appended (messages.length changes)
+  // and only when user is near the bottom. Removed isTyping from deps — isTyping
+  // changes cause redundant scroll calls without any new content.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+    if (isUserNearBottom.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages.length]);
 
   useEffect(() => {
     if (initialSearchQuery) {
@@ -1839,6 +1977,9 @@ export default function AIWorkspace({
   const handleSend = async (manualQuery?: string) => {
     const query = manualQuery ?? inputValue;
     if (!query.trim()) return;
+
+    // Force scroll to bottom when user explicitly sends a new message
+    isUserNearBottom.current = true;
 
     setError(null);
     setShowSuggestions(false); // Hide suggested queries once a search triggers
@@ -1995,10 +2136,11 @@ export default function AIWorkspace({
       // Extract crime_no or report_id from payload
       if (activePayloads.length > 0) {
         const payload = activePayloads[activePayloads.length - 1].backendPayload;
+        const payloadAny = payload as any;
         if (payload?.results && payload.results.length > 0 && payload.results[0].crime_no) {
           reportId = payload.results[0].crime_no;
-        } else if (payload?.report_id) {
-          reportId = payload.report_id;
+        } else if (payloadAny?.report_id) {
+          reportId = payloadAny.report_id;
         } else if (activePayloads[0].backendPayload?.results?.[0]?.crime_no) {
           reportId = activePayloads[0].backendPayload.results[0].crime_no;
         }
@@ -2131,7 +2273,11 @@ export default function AIWorkspace({
       </div>
 
       {/* Message Output Workspace */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
+      <div 
+        className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6"
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+      >
         
         {/* LANDING EXPERIENCE SCREEN */}
         {messages.length === 1 && !demoActive && (
@@ -2288,76 +2434,23 @@ export default function AIWorkspace({
         )}
 
         {/* MESSAGES LISTING */}
+        {/* FIX: Each MessageBubble is wrapped in React.memo. Only the currently-streaming
+             message updates; all completed messages are fully bailout-eligible. */}
         <ErrorBoundary>
-        {(messages.length > 1 || demoActive) && messages.map((msg) => {
-          const isUser = msg.sender === 'user';
-          // Mock time format for redesign
-          const timeString = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-          return (
-            <div
-              key={msg.id}
-              className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} animate-fadeIn mb-6`}
-            >
-              <div className={`flex items-start max-w-[85%] md:max-w-[75%] ${isUser ? 'flex-row-reverse' : 'flex-row'} space-x-4`}>
-                
-                {/* Avatar Icon */}
-                {!isUser && (
-                  <div className="w-9 h-9 rounded-full border border-[#18D3C5]/30 bg-[#18D3C5]/10 flex items-center justify-center text-[#18D3C5] flex-shrink-0 mt-1 mr-4">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                )}
-
-                {/* Message Bubble/Card */}
-                <div
-                  className={`p-5 rounded-2xl flex flex-col space-y-3 shadow-md ${
-                    isUser
-                      ? 'bg-[#152C2D] text-white rounded-tr-sm border border-[#18D3C5]/10 ml-4'
-                      : 'bg-[#141A22] text-neutral-200 rounded-tl-sm border border-white/5'
-                  }`}
-                >
-                  <div className="font-sans leading-relaxed text-[15px] whitespace-pre-wrap">
-                    {!isUser && msg.isStreaming ? (
-                      <StreamedText
-                        text={msg.id === 'm-welcome' ? t(msg.text, activeUiLang) : msg.text}
-                        onUpdate={() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })}
-                        onComplete={() => { msg.isStreaming = false; }}
-                      />
-                    ) : (
-                      <span>{msg.id === 'm-welcome' ? t(msg.text, activeUiLang) : msg.text}</span>
-                    )}
-                  </div>
-
-                  {/* Backend Cards (AI Only) */}
-                  {msg.backendPayload && (
-                    <div className="mt-4">
-                      <IntentResponseBlock payload={msg.backendPayload} onQueryAction={handleSend} />
-                    </div>
-                  )}
-
-                  {/* Metadata Footer */}
-                  <div className={`flex items-center space-x-2 text-[11px] font-medium text-neutral-500 pt-2 ${isUser ? 'justify-end' : 'justify-between'}`}>
-                    {!isUser && msg.backendPayload && (
-                      <button
-                        onClick={() => setActiveDrawerPayload(msg.backendPayload || null)}
-                        className="flex items-center space-x-1 hover:text-[#18D3C5] transition cursor-pointer px-2 py-1 rounded-md hover:bg-[#18D3C5]/10 border border-transparent hover:border-[#18D3C5]/20"
-                        title="View Developer Info"
-                      >
-                        <Info className="w-3.5 h-3.5" />
-                        <span>Info</span>
-                      </button>
-                    )}
-                    <div className="flex items-center space-x-2">
-                      <span>{timeString}</span>
-                      {isUser && <CheckCheck className="w-3.5 h-3.5 text-[#18D3C5]" />}
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          );
-        })}
+        {(messages.length > 1 || demoActive) && messages.map((msg) => (
+          <MessageBubble
+            key={msg.id}
+            msg={msg}
+            activeUiLang={activeUiLang}
+            isUserNearBottom={isUserNearBottom}
+            messagesEndRef={messagesEndRef}
+            onDrawerOpen={setActiveDrawerPayload}
+            onQueryAction={handleSend}
+            onStreamComplete={(id) => {
+              setMessages(prev => prev.map(m => m.id === id ? { ...m, isStreaming: false } : m));
+            }}
+          />
+        ))}
         </ErrorBoundary>
 
         {/* AI Typing Indicator */}

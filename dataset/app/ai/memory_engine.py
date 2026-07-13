@@ -235,6 +235,13 @@ class MemoryEngineStage:
                     state.active_victim = mem.active_victim
                     state.active_station = mem.active_station
                     state.active_district = mem.active_district
+                    # Persist the synced state to the store so future reloads see updated active_fir
+                    from app.ai.conversation_engine import ConversationEngine
+                    store_state = ConversationEngine.get_state(context.conversation_id)
+                    store_state.active_fir = mem.active_fir
+                    store_state.active_accused = mem.active_accused
+                    store_state.active_victim = mem.active_victim
+                    ConversationEngine.get_store().save(context.conversation_id, store_state)
         except Exception as e:
             logger.error(f"MemoryEngineStage failed: {e}", exc_info=True)
             context.warnings.append(f"MemoryEngineStage failed: {e}")

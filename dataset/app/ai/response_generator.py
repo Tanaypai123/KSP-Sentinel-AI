@@ -81,7 +81,7 @@ class ResponseGenerator:
     def build_clarification_required(intent: str, confidence: float, start_time: float) -> dict:
         summary = "I am not entirely sure what you want to do. Could you please clarify your request?"
         return ResponseGenerator._build_dict(
-            False, intent, summary, {}, [], start_time, confidence, 
+            False, "UNKNOWN", summary, {}, [], start_time, confidence, 
             error="Clarification required", suggestions=_DEFAULT_SUGGESTIONS
         )
 
@@ -95,7 +95,7 @@ class ResponseGenerator:
     def build_invalid_district(raw_district: str, suggestions: list, intent: str, entities: dict, confidence: float, start_time: float) -> dict:
         summary = get_invalid_district(raw_district, suggestions)
         return ResponseGenerator._build_dict(
-            False, intent, summary, entities, [], start_time, confidence, 
+            False, "UNKNOWN", summary, entities, [], start_time, confidence, 
             error=f"District '{raw_district}' not found", suggestions=[f"Show cases in {s}" for s in suggestions]
         )
 
@@ -104,7 +104,7 @@ class ResponseGenerator:
         suggest_str = "\n  • ".join(top_matches)
         summary = f"I couldn't find an exact match for '{name_entity}'.\n\nHowever, I found similar names:\n  • {suggest_str}\n\nWould you like to search one of these?"
         return ResponseGenerator._build_dict(
-            False, intent, summary, entities, [], start_time, confidence, 
+            False, "UNKNOWN", summary, entities, [], start_time, confidence, 
             error="No exact match", suggestions=[f"Find {table_name} {m}" for m in top_matches]
         )
 

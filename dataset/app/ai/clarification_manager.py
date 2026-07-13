@@ -24,7 +24,7 @@ class ClarificationManager:
                 
             if len(unique_ids) > 1:
                 q_low = query.lower()
-                if not re.search(r"\b(first|second|third|latest|newest|this|that|both)\b", q_low):
+                if not re.search(r"\b(first|second|third|latest|newest|this|that|both|previous|last|recent|other|earlier|prior)\b", q_low):
                     return True
                 
         return False

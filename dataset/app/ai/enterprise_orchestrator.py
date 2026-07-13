@@ -184,7 +184,7 @@ class PipelineCoordinator:
             TimelineStage, CaseSimilarityStage, DecisionSupportStage,
             MultiAgentEngineStage, PredictiveEngineStage, ConfidenceEngineStage,
             ExplainabilityEngineStage, HallucinationGuardStage, MemoryEngineStage,
-            ResponseGeneratorStage
+            ResponseGeneratorStage, ContextNormalizerStage, InvestigationReasoningEngineStage
         )
         return {
             "IntentRouterStage": IntentRouterStage,
@@ -195,9 +195,11 @@ class PipelineCoordinator:
             "ClarificationCheckStage": ClarificationCheckStage,
             "QueryPlannerStage": QueryPlannerStage,
             "SearchServiceStage": SearchServiceStage,
-            "IntelligenceEngineStage": IntelligenceEngineStage,
-            "ReasoningEngineStage": ReasoningEngineStage,
+            "ContextNormalizerStage": ContextNormalizerStage,
             "EvidenceCorrelationStage": EvidenceCorrelationStage,
+            "ReasoningEngineStage": ReasoningEngineStage,
+            "InvestigationReasoningEngineStage": InvestigationReasoningEngineStage,
+            "IntelligenceEngineStage": IntelligenceEngineStage,
             "KnowledgeGraphStage": KnowledgeGraphStage,
             "TimelineStage": TimelineStage,
             "CaseSimilarityStage": CaseSimilarityStage,

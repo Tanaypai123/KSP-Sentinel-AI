@@ -1,5 +1,6 @@
 import time
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -35,6 +36,8 @@ from app.ai.timeline_engine import TimelineStage
 from app.ai.case_similarity_engine import CaseSimilarityStage
 from app.ai.decision_support_engine import DecisionSupportStage
 from app.ai.enterprise_orchestrator import EnterpriseOrchestrator
+from app.ai.context_normalizer import ContextNormalizerStage
+from app.ai.investigation_reasoning_engine import InvestigationReasoningEngineStage
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +77,8 @@ class ExecutionContext:
     similarity_report: Optional[Dict[str, Any]] = None
     decision_support_report: Optional[Dict[str, Any]] = None
     enterprise_report: Optional[Dict[str, Any]] = None
+    normalized_cases: List[Any] = field(default_factory=list)
+    investigation_reasoning: Optional[Any] = None
 
 class PipelineRunner:
     @staticmethod
@@ -101,9 +106,11 @@ class PipelineRunner:
             "ClarificationCheckStage": ClarificationCheckStage,
             "QueryPlannerStage": QueryPlannerStage,
             "SearchServiceStage": SearchServiceStage,
+            "ContextNormalizerStage": ContextNormalizerStage,
             "IntelligenceEngineStage": IntelligenceEngineStage,
-            "ReasoningEngineStage": ReasoningEngineStage,
             "EvidenceCorrelationStage": EvidenceCorrelationStage,
+            "ReasoningEngineStage": ReasoningEngineStage,
+            "InvestigationReasoningEngineStage": InvestigationReasoningEngineStage,
             "KnowledgeGraphStage": KnowledgeGraphStage,
             "TimelineStage": TimelineStage,
             "CaseSimilarityStage": CaseSimilarityStage,
@@ -144,7 +151,20 @@ class IntentRouterStage:
         parsed_query = parse_query(context.raw_query, context.db)
         context.resolved_entities = parsed_query.get("entities", {})
         
-        intent_result = IntentRouter.detect(context.raw_query)
+        # BUG 3 FIX: Always load conversation state FIRST — before any early return.
+        # Previously, when intent was conversational, IntentRouterStage set context.response
+        # early, the orchestrator saw response!=None and skipped ConversationEngineStage entirely,
+        # leaving context.conversation_state = None. All follow-up stages then crashed.
+        q_low = context.raw_query.lower()
+        if any(x in q_low for x in ["forget", "reset", "clear", "new chat", "start over"]):
+            ConversationEngine.reset(context.conversation_id)
+        context.conversation_state = ConversationEngine.get_state(context.conversation_id)
+        
+        intent_result = IntentRouter.detect(
+            context.raw_query,
+            has_active_fir=context.conversation_state.active_fir is not None,
+            has_active_accused=context.conversation_state.active_accused is not None
+        )
         context.intent_result = intent_result
         context.intent = intent_result.intent or "UNKNOWN"
         context.confidence["intent"] = intent_result.confidence
@@ -153,19 +173,100 @@ class IntentRouterStage:
         if intent_result.is_multi_intent:
             context.response = ResponseGenerator.build_multi_intent_error(context.start_time)
         elif intent_result.is_conversational:
-            context.response = ResponseGenerator.build_conversational(
-                intent_result.intent, intent_result.conversational_response, intent_result.confidence, context.start_time
+            # BUG 3 FIX: Intercept "explain X" queries when there is active context.
+            # These should NOT be treated as conversational — they are follow-up queries.
+            explain_patterns = [
+                "explain confidence", "explain recommendation", "explain insight",
+                "explain officer", "explain evidence", "explain risk", "explain score",
+                "what is the confidence", "what does confidence mean", "why this risk",
+                "why is risk", "explain the report", "explain findings", "what is the score"
+            ]
+            active_fir = context.conversation_state.active_fir
+            is_explain_followup = any(pat in q_low for pat in explain_patterns) and active_fir is not None
+            if not is_explain_followup:
+                context.response = ResponseGenerator.build_conversational(
+                    intent_result.intent, intent_result.conversational_response, intent_result.confidence, context.start_time
+                )
+            else:
+                # Treat as FIR_LOOKUP follow-up so the full pipeline runs with active context
+                context.intent = "FIR_LOOKUP"
+                context.intent_result.intent = "FIR_LOOKUP"
+                context.intent_result.is_conversational = False
+                context.intent_result.is_fir_open_query = True
+                context.is_followup = True
+                fir_no = (active_fir.get("crime_no") or active_fir.get("fir_no") or active_fir.get("case_no"))
+                if fir_no:
+                    context.resolved_entities["identifiers"] = [fir_no]
+                    context.resolved_entities["fir_number"] = fir_no
+        
+        # BUG 5 + 6 + 7 FIX: Validate FIR token format BEFORE context resolution can intercept.
+        # "Open FIR ABCD", "Open FIR ####", and "Show FIR NULL" must be rejected immediately.
+        # Without this check, SearchService._handle_context_flow sees is_followup=True and opens 
+        # the PREVIOUS active FIR — a dangerous phantom FIR opening.
+        if context.intent == "FIR_LOOKUP" and not context.is_followup:
+            raw_q = context.raw_query
+            # Extract the token that was presented as a FIR number (after 'fir', 'case', 'open')
+            fir_token_match = re.search(
+                r"\b(?:open|show|find|get|fetch|display|fir|case)\s+(?:fir\s+|case\s+)?([^\s]+)",
+                raw_q, re.IGNORECASE
             )
+            if fir_token_match:
+                token = fir_token_match.group(1).strip()
+                # Remove punctuation from token (e.g. "NULL?" or "ABCD.") for check
+                token_clean = re.sub(r'[^\w\s\-]', '', token)
+                # A valid FIR token must contain at least one digit.
+                # Pure alpha (ABCD) or pure special chars (####, !@#$) are invalid.
+                has_digit = bool(re.search(r'\d', token_clean))
+                all_special = bool(re.match(r'^[^a-zA-Z0-9]+$', token))
+                is_null_or_none = token_clean.lower() in {"null", "none", "undefined"}
+                # Also reject tokens that are common English words (not FIR IDs)
+                common_words = {
+                    'this', 'the', 'a', 'an', 'fir', 'case', 'all', 'latest', 'recent',
+                    # Ordinal/temporal reference words used for previous FIR lookups
+                    'previous', 'last', 'first', 'second', 'third', 'latest', 'earliest',
+                    'recent', 'newest', 'oldest', 'prior', 'other', 'next'
+                }
+                is_word = token_clean.lower() in common_words
+                
+                if is_null_or_none:
+                    error_msg = (
+                        f"Invalid FIR format: '{token}' is not a valid FIR number. "
+                        f"Please provide a valid FIR number such as KSP-000012."
+                    )
+                    context.response = ResponseGenerator.build_ambiguous_error(
+                        error_msg, context.intent_result.confidence, context.start_time
+                    )
+                    return context
+                
+                if not has_digit and not is_word:
+                    # Invalid FIR identifier — alphabetic-only OR special chars only
+                    error_msg = (
+                        f"Invalid FIR format: '{token}' is not a valid FIR number. "
+                        f"Please provide a valid FIR number such as KSP-000012 or KSP-0012."
+                    )
+                    context.response = ResponseGenerator.build_ambiguous_error(
+                        error_msg, context.intent_result.confidence, context.start_time
+                    )
+                    return context
+                if all_special:
+                    error_msg = (
+                        f"Invalid FIR format: '{token}' contains only special characters. "
+                        f"Please provide a valid FIR number such as KSP-000012."
+                    )
+                    context.response = ResponseGenerator.build_ambiguous_error(
+                        error_msg, context.intent_result.confidence, context.start_time
+                    )
+                    return context
         return context
 
 class ConversationEngineStage:
     @staticmethod
     def run(context: ExecutionContext) -> ExecutionContext:
-        q_low = context.raw_query.lower()
-        if any(x in q_low for x in ["forget", "reset", "clear", "new chat", "start over"]):
-            ConversationEngine.reset(context.conversation_id)
-            
-        context.conversation_state = ConversationEngine.get_state(context.conversation_id)
+        # BUG 3 FIX: ConversationState is already loaded in IntentRouterStage.
+        # This stage is now a no-op that only handles explicit reset commands
+        # that may arrive after the intent router ran. State is guaranteed to exist.
+        if context.conversation_state is None:
+            context.conversation_state = ConversationEngine.get_state(context.conversation_id)
         return context
 
 class ClarificationResolutionStage:
@@ -204,11 +305,16 @@ class ReferenceResolverStage:
                         context.resolved_entities["identifiers"] = [fir_no]
                         context.resolved_entities["fir_number"] = fir_no
                         context.intent = "FIR_LOOKUP"
-                        # Set active context resolution early response for FIR Lookups!
-                        summary = f"Opening FIR {fir_no}."
-                        context.response = ResponseGenerator.build_active_context_resolution(
-                            "FIR_LOOKUP", summary, context.resolved_entities, resolved_rec, context.intent_result.confidence, context.start_time
-                        )
+                        # Only short-circuit for simple "open/show this/that FIR" commands.
+                        # For search/find/analyze/compare/explain queries, let the full pipeline run.
+                        q_raw = context.raw_query.lower()
+                        search_verbs = {"search", "find", "analyze", "analyse", "compare", "investigate", "query", "lookup", "explain", "why", "what", "how"}
+                        is_search_query = any(v in q_raw for v in search_verbs)
+                        if not is_search_query:
+                            summary = f"Opening FIR {fir_no}."
+                            context.response = ResponseGenerator.build_active_context_resolution(
+                                "FIR_LOOKUP", summary, context.resolved_entities, resolved_rec, context.intent_result.confidence, context.start_time
+                            )
         return context
 
 class PronounResolverStage:
@@ -252,18 +358,43 @@ class ClarificationCheckStage:
                 if k not in preserve_keys:
                     context.resolved_entities.pop(k, None)
                     
+        # Sanitize identifiers to scrub null/none/empty/special tokens
+        if context.resolved_entities.get("identifiers"):
+            idents = context.resolved_entities["identifiers"]
+            if isinstance(idents, list):
+                valid_idents = [
+                    x for x in idents
+                    if x and str(x).lower() not in {"null", "none", "undefined"}
+                    and not re.match(r'^[^a-zA-Z0-9]+$', str(x))
+                ]
+                context.resolved_entities["identifiers"] = valid_idents
+                if not valid_idents:
+                    context.resolved_entities.pop("identifiers", None)
+                    context.resolved_entities.pop("fir_number", None)
+                    
         # Re-run IntentRouter detect with context state overrides
         active_fir = context.conversation_state.active_fir
         active_accused = context.conversation_state.active_accused
+        
+        # Preserve manual overrides (like explain intercept in IntentRouterStage)
+        was_fir_open = context.intent_result.is_fir_open_query if context.intent_result else False
+        was_conversational = context.intent_result.is_conversational if context.intent_result else False
+        
         intent_result = IntentRouter.detect(
             context.raw_query,
             is_followup_intent=is_followup_intent,
             has_active_fir=active_fir is not None,
             has_active_accused=active_accused is not None
         )
+        
+        if was_fir_open:
+            intent_result.is_fir_open_query = True
+            intent_result.is_conversational = False
+            
         context.intent_result = intent_result
         if intent_result.intent != "UNKNOWN":
             context.intent = intent_result.intent
+
             
         # Detect ambiguity/clarification required
         is_deterministic = "ksp-" in context.raw_query.lower() or intent_result.is_fir_open_query
@@ -285,7 +416,10 @@ class QueryPlannerStage:
     def run(context: ExecutionContext) -> ExecutionContext:
         from app.ai.query_planner import QueryPlanner
         new_stages = QueryPlanner.build_plan(context.intent, context.raw_query, context.resolved_entities)
-        context.plan.extend(new_stages)
+        # Filter out stages that have already run to prevent duplicate warnings that block MemoryEngine state updates
+        already_run = set(context.executed_stages) | {"QueryPlannerStage"}
+        filtered = [s for s in new_stages if s not in already_run]
+        context.plan.extend(filtered)
         return context
 
 class SearchServiceStage:
@@ -297,6 +431,78 @@ class SearchServiceStage:
         is_loc = context.intent == "SEARCH_LOCATION" or (context.intent_result and context.intent_result.intent == "SEARCH_LOCATION")
         if is_loc and "station" not in context.raw_query.lower() and "address" not in context.raw_query.lower():
             context.intent = "SEARCH_CASES"
+
+        # BUG 2 FIX: Handle REPORTS intent — previously had NO handler, fell through to FIR_LOOKUP
+        # validation which returned "I am not entirely sure..." because no identifiers were set.
+        if context.intent == "REPORTS":
+            active_fir = context.conversation_state.active_fir if context.conversation_state else None
+            if active_fir:
+                fir_no = active_fir.get("crime_no") or active_fir.get("fir_no") or active_fir.get("case_no")
+                context.intent = "FIR_LOOKUP"
+                context.intent_result.intent = "FIR_LOOKUP"
+                context.intent_result.is_fir_open_query = True
+                context.resolved_entities["identifiers"] = [fir_no]
+                context.resolved_entities["fir_number"] = fir_no
+                context.is_followup = True
+            else:
+                # No active FIR — give a useful clarification instead of generic error
+                # BUG FIX: ResponseGenerator is imported at module top level, use it directly
+                context.response = ResponseGenerator.build_clarification_required(
+                    "REPORTS", context.intent_result.confidence, context.start_time
+                )
+                context.response["summary"] = (
+                    "To generate a report, please first open a specific FIR. "
+                    "Example: Open FIR KSP-000012, then say 'Generate report'."
+                )
+                return context
+
+        # BUG 1 FIX: "Show evidence" / "what is the evidence" follow-ups.
+        # Previously: matched HOTSPOT or generic SEARCH_CASES with no FIR filter — zero results.
+        # Now: when active FIR is present and query is about evidence, re-open the active FIR.
+        # BUG 4 FIX: EXPAND context injection to cover ALL common follow-up actions:
+        # show timeline, show recommendation, show accused, show victim, show officer insight, etc.
+        # Previously only "evidence" was covered — all others fell through to wrong intent.
+        q_low = context.raw_query.lower()
+        active_fir = context.conversation_state.active_fir if context.conversation_state else None
+        
+        # Comprehensive list of follow-up action patterns that require active FIR context
+        fir_followup_patterns = [
+            # Evidence
+            "show evidence", "what evidence", "list evidence",
+            "show the evidence", "what is the evidence", "evidence found",
+            "collected evidence", "forensic evidence", "physical evidence",
+            # Timeline
+            "show timeline", "timeline", "show the timeline", "case timeline",
+            "what is the timeline", "show chronology", "chronological",
+            # Recommendations
+            "show recommendation", "recommendations", "show the recommendation",
+            "what are the recommendations", "list recommendations",
+            "next steps", "suggested actions",
+            # Officer insight
+            "officer insight", "show insight", "investigation insight",
+            "case insight", "show the insight",
+            # Accused / Suspect
+            "show accused", "who is the accused", "show the accused",
+            "accused details", "suspect details",
+            # Case strength
+            "case strength", "show strength", "investigation strength",
+            "how strong",
+            # Limitations
+            "show limitations", "limitations", "investigation limitations",
+            # Full report / summary
+            "show full report", "show report", "full details", "all details",
+        ]
+        
+        is_fir_followup = any(pat in q_low for pat in fir_followup_patterns) and active_fir is not None
+        if is_fir_followup and context.intent not in ["FIR_LOOKUP"]:
+            fir_no = active_fir.get("crime_no") or active_fir.get("fir_no") or active_fir.get("case_no")
+            if fir_no:
+                context.intent = "FIR_LOOKUP"
+                context.intent_result.intent = "FIR_LOOKUP"
+                context.intent_result.is_fir_open_query = True
+                context.resolved_entities["identifiers"] = [fir_no]
+                context.resolved_entities["fir_number"] = fir_no
+                context.is_followup = True
 
         # 1. Invalid district check
         if not context.resolved_entities.get("structured_is_valid_district", True):

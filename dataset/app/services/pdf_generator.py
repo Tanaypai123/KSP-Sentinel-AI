@@ -35,10 +35,28 @@ def generate_pdf_report(report_id: str, output_path: str, payload: Dict[str, Any
             prefix = "Officer Query:" if sender == 'User' else "AI Assistant:"
             
             story.append(Paragraph(f"<b>{prefix}</b>", styles[style_name]))
-            story.append(Spacer(1, 4))
+            import re
             
-            # Clean up the text for PDF rendering
-            clean_text = text.replace('\n', '<br />')
+            clean_text = text
+            
+            # Remove Markdown headers
+            clean_text = re.sub(r'(?m)^#+\s+', '', clean_text)
+            
+            # Remove Markdown bold/italic
+            clean_text = re.sub(r'\*\*(.*?)\*\*', r'\1', clean_text)
+            clean_text = re.sub(r'__(.*?)__', r'\1', clean_text)
+            clean_text = re.sub(r'\*(.*?)\*', r'\1', clean_text)
+            
+            # Remove horizontal dividers and visual blocks
+            clean_text = re.sub(r'─+', '', clean_text)
+            clean_text = re.sub(r'■+', '', clean_text)
+            
+            # Escape HTML characters before converting newlines so we don't break ReportLab
+            clean_text = clean_text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            
+            # Convert newlines to ReportLab breaks
+            clean_text = clean_text.replace('\n', '<br />')
+            
             story.append(Paragraph(clean_text, styles['Normal']))
             story.append(Spacer(1, 12))
             
